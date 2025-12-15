@@ -1,3 +1,8 @@
+# 설치
+```bash
+source ./setup.sh
+```
+
 # Neovim Configuration (v0.11+)
 
 현대적인 Neovim 설정 with LSP, Treesitter, **GitHub Copilot** 지원
