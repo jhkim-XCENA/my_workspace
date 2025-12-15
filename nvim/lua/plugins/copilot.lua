@@ -13,7 +13,8 @@ return {
                 suggestion = {
                     enabled = true,
                     auto_trigger = true, -- 입력 시 자동으로 제안 표시
-                    debounce = 75,       -- 제안 딜레이 (ms)
+                    debounce = 50,       -- 제안 딜레이를 10ms로 단축 (더 빠른 응답)
+                    min_prefix_length = 0, -- 입력 없어도 바로 제안 표시
                     keymap = {
                         accept = "<C-l>",      -- Ctrl+l 로 제안 수락
                         accept_word = false,   -- 단어 단위 수락 비활성화

@@ -143,3 +143,17 @@ return {}
 | `lua/plugins/init.lua` | 기본 플러그인 명세 (LSP, Treesitter, Nvim-Tree 등) |
 | `lua/plugins/copilot.lua` | **GitHub Copilot 전용 모듈** (고립된 구조) ⭐ |
 | `lua/lsp/lspconfig.lua` | **`vim.lsp.config` 기반**의 LSP 서버별 상세 설정 및 키매핑 정의 |
+
+
+# Windows Terminal 단축키
+
+## 창 분할
+- alt + shift + - : 수평 분할
+- alt + shift + + : 수직 분할
+
+## 창 간 이동:
+- alt + 방향키: 해당 방향의 창으로 이동
+
+## 기타
+- ctrl + shift + W: 현재 창 닫기
+- alt + shift + W: 모든 창 닫기

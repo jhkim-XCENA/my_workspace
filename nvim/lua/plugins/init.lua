@@ -194,5 +194,21 @@ return {
                 },
             })
         end,
-    },   
+    },
+
+    -- 9. Markdown Viewer (터미널에서 보기 좋게 렌더링)
+    {
+        "tadmccorkle/markdown.nvim",
+        ft = { "markdown" },
+        opts = {
+            hooks = {
+                setloclist = function(buf)
+                    -- 마크다운 헤더를 location list에 표시
+                end,
+            },
+            on_attach = function(bufnr)
+                vim.keymap.set('n', '<leader>mp', ':MarkdownPreview<CR>', { buffer = bufnr, noremap = true, silent = true })
+            end,
+        },
+    },
 }

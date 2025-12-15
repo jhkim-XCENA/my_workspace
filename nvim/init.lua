@@ -23,6 +23,9 @@ opt.scrolloff = 8             -- 스크롤 시 위아래 여백 확보
 opt.updatetime = 50           -- 반응 속도 (기본 4000ms -> 50ms)
 opt.guicursor = "a:ver25"     -- 커서 스타일 (일반모드: 세로선, 입력모드: 세로선)
 opt.clipboard = "unnamedplus" -- 시스템 클립보드 사용
+opt.cmdheight = 3
+opt.guifont = "JetBrainsMono Nerd Font:h20"  -- 명령줄 글자 크기 20pt
+opt.autoread = true       -- 파일이 외부에서 수정되면 자동 새로고침
 
 -- for korean letters in docker
 opt.encoding = "utf-8"
