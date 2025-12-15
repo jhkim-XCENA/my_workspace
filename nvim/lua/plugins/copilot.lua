@@ -10,7 +10,7 @@ return {
         event = "InsertEnter", -- 입력 모드 진입 시 로드 (시작 속도 최적화)
         config = function()
             require("copilot").setup({
-                suggestion = { 
+                suggestion = {
                     enabled = true,
                     auto_trigger = true, -- 입력 시 자동으로 제안 표시
                     debounce = 75,       -- 제안 딜레이 (ms)
@@ -70,6 +70,9 @@ return {
         },
         build = "make tiktoken", -- MacOS/Linux에서 응답 속도 향상 (선택)
         opts = {
+            -- [변경됨] 모델을 Claude 4.5 Sonnet으로 설정
+            model = "claude-4.5-sonnet",
+            
             debug = false,
             show_help = "yes",
             prompts = {
@@ -83,51 +86,51 @@ return {
         },
         keys = {
             -- 채팅 토글
-            { 
-                "<leader>cc", 
-                ":CopilotChatToggle<CR>", 
+            {
+                "<leader>cc",
+                ":CopilotChatToggle<CR>",
                 desc = "Copilot Chat 토글",
                 mode = { "n", "v" }
             },
             -- 코드 설명
-            { 
-                "<leader>ce", 
-                ":CopilotChatExplain<CR>", 
+            {
+                "<leader>ce",
+                ":CopilotChatExplain<CR>",
                 desc = "코드 설명",
                 mode = "v"
             },
             -- 코드 수정
-            { 
-                "<leader>cf", 
-                ":CopilotChatFix<CR>", 
+            {
+                "<leader>cf",
+                ":CopilotChatFix<CR>",
                 desc = "코드 수정",
                 mode = "v"
             },
             -- 코드 최적화
-            { 
-                "<leader>co", 
-                ":CopilotChatOptimize<CR>", 
+            {
+                "<leader>co",
+                ":CopilotChatOptimize<CR>",
                 desc = "코드 최적화",
                 mode = "v"
             },
             -- 코드 리뷰
-            { 
-                "<leader>cr", 
-                ":CopilotChatReview<CR>", 
+            {
+                "<leader>cr",
+                ":CopilotChatReview<CR>",
                 desc = "코드 리뷰",
                 mode = "v"
             },
             -- 테스트 생성
-            { 
-                "<leader>ct", 
-                ":CopilotChatTests<CR>", 
+            {
+                "<leader>ct",
+                ":CopilotChatTests<CR>",
                 desc = "테스트 생성",
                 mode = "v"
             },
             -- 문서화
-            { 
-                "<leader>cd", 
-                ":CopilotChatDocs<CR>", 
+            {
+                "<leader>cd",
+                ":CopilotChatDocs<CR>",
                 desc = "문서 생성",
                 mode = "v"
             },
@@ -147,3 +150,5 @@ return {
         end,
     },
 }
+
+
