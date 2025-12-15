@@ -22,6 +22,7 @@ opt.termguicolors = true      -- 24bit 트루컬러 사용
 opt.scrolloff = 8             -- 스크롤 시 위아래 여백 확보
 opt.updatetime = 50           -- 반응 속도 (기본 4000ms -> 50ms)
 opt.guicursor = "a:ver25"     -- 커서 스타일 (일반모드: 세로선, 입력모드: 세로선)
+opt.clipboard = "unnamedplus" -- 시스템 클립보드 사용
 
 -- for korean letters in docker
 opt.encoding = "utf-8"
@@ -57,6 +58,9 @@ require("lazy").setup({
     },
     checker = { enabled = true }, -- 플러그인 업데이트 자동 확인
 })
+
+-- Visual Mode에서 a를 누르면 Selection을 해제(Esc)하고 즉시 Insert(i) 모드로 진입
+vim.keymap.set('v', 'a', '<Esc>i', { noremap = true, silent = true })
 
 -- 4. Load Extra Configs (LSP, Treesitter 등은 플러그인 파일에서 로드되지만 명시적 로드 필요 시)
 -- Lazy.nvim 방식에서는 보통 plugins/ 폴더 내에서 config() 함수로 처리하는 것이 깔끔합니다.

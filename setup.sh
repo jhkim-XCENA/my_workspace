@@ -11,6 +11,18 @@ if [[ $EUID -ne 0 ]]; then
     SUDO="sudo"
 fi
 
+# npm 설치
+$SUDO apt update
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+
+# 즉시 사용을 위해 환경변수 직접 로드 (bashrc 대신)
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+nvm install --lts
+# copilot cli 설치
+npm install -g @github/copilot
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 $SUDO echo $SCRIPT_DIR
 
