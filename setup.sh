@@ -70,13 +70,14 @@ if grep -q "### jhkim-config ps1 start" "$BASHRC_FILE"; then
     sed -i '/### jhkim-config ps1 start/,/### jhkim-config ps1 end/d' "$BASHRC_FILE"
 fi
 
-# 새로운 PS1 설정 추가
-# \H: 시간 (HH)
-# \M: 분 (MM)
+# 새로운 PS1 설정 추가 (보라색 컬러)
+# \033[38;5;135m: 보라색 (256 컬러 모드)
+# \033[0m: 컬러 리셋
+# \A: 시간 (HH:MM)
 # \W: 현재 작업 디렉토리의 마지막 구성 요소
 echo "" >> "$BASHRC_FILE"
 echo "### jhkim-config ps1 start" >> "$BASHRC_FILE"
-echo 'export PS1="[\A] \W\$ "' >> "$BASHRC_FILE"
+echo 'export PS1="\[\033[38;5;135m\][\A] \W\$\[\033[0m\] "' >> "$BASHRC_FILE"
 echo "### jhkim-config ps1 end" >> "$BASHRC_FILE"
 
 source ~/.bashrc
