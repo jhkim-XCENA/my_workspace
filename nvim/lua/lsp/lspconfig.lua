@@ -40,7 +40,7 @@ vim.lsp.config.clangd = {
         "--function-arg-placeholders",
     },
     capabilities = capabilities,
-    root_markers = { '.git', 'compile_commands.json' },
+    root_markers = { '.git', 'CMakeLists.txt', 'compile_commands.json' },
     filetypes = { 'c', 'cpp', 'objc', 'objcpp', 'cuda', 'proto', 'h', 'hpp', 'hh', 'hxx' },
 }
 vim.lsp.enable('clangd')
