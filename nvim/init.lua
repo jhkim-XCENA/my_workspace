@@ -68,3 +68,11 @@ vim.keymap.set('v', 'a', '<Esc>i', { noremap = true, silent = true })
 -- 4. Load Extra Configs (LSP, Treesitter 등은 플러그인 파일에서 로드되지만 명시적 로드 필요 시)
 -- Lazy.nvim 방식에서는 보통 plugins/ 폴더 내에서 config() 함수로 처리하는 것이 깔끔합니다.
 -- 하지만 기존 구조를 유지하기 위해 아래 require를 유지하되, 내용은 Lazy spec에 맞게 수정했습니다.
+
+-- 키 입력 타이밍 설정 (방향키 딜레이 해결)
+opt.timeoutlen = 500        -- 매핑 완성을 기다리는 시간 (ms)
+opt.ttimeoutlen = 10        -- 터미널 시퀀스 타이밍 (매우 중요!) - 10ms로 낮게 설정
+
+-- 키 입력 타이밍 설정 - keyremap.lua 로드
+local config_path = vim.fn.stdpath("config")
+dofile(config_path .. "/keyremap.lua")

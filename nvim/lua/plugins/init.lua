@@ -2,12 +2,15 @@
 -- 기본 플러그인 설정 (Copilot 제외)
 
 return {
-    -- 1. Color Scheme (Tokyo Night)
+    -- 1. Color Scheme (OneDark Darker)
     {
-        "folke/tokyonight.nvim",
+        "olimorris/onedarkpro.nvim",
         priority = 1000,
         config = function()
-            vim.cmd.colorscheme("tokyonight-storm")
+            require("onedarkpro").setup({
+                style = "darker",
+            })
+            vim.cmd.colorscheme("onedark")
         end,
     },
 
@@ -46,7 +49,7 @@ return {
 
             require('lualine').setup({
                 options = { 
-                    theme = "tokyonight",
+                    theme = "onedark",
                     component_separators = { left = '|', right = '|'},
                 },
                 sections = {
