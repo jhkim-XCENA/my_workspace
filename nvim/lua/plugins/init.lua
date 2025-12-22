@@ -14,10 +14,14 @@ return {
         end,
     },
 
-    -- 2. File Explorer (Nvim-Tree)
+    -- 2. File Explorer (Nvim-Tree) - 명시적으로 호출할 때만 로드
     {
         "nvim-tree/nvim-tree.lua",
         dependencies = { "nvim-tree/nvim-web-devicons" },
+        cmd = { "NvimTreeToggle", "NvimTreeOpen", "NvimTreeFocus" }, -- 명령어 사용 시에만 로드
+        keys = {
+            { "<C-n>", ":NvimTreeToggle<CR>", desc = "Toggle file tree", silent = true }
+        },
         config = function()
             require("nvim-tree").setup({
                 sort = { sorter = "case_sensitive" },
@@ -25,7 +29,6 @@ return {
                 renderer = { group_empty = true },
                 filters = { dotfiles = true },
             })
-            vim.keymap.set("n", "<C-n>", ":NvimTreeToggle<CR>", { silent = true })
         end,
     },
 
@@ -34,17 +37,27 @@ return {
         "nvim-lualine/lualine.nvim",
         dependencies = { "nvim-tree/nvim-web-devicons" },
         config = function()
-            -- IME 상태 감지 함수
+            -- IME 상태 감지 함수 (캐시 추가로 성능 개선)
+            local ime_status_cache = { value = "🇺🇸 EN", timestamp = 0 }
             local function get_ime_status()
+                local current_time = vim.loop.hrtime() / 1000000 -- ms로 변환
+                -- 1초 이내면 캐시된 값 반환 (빈번한 프로세스 실행 방지)
+                if current_time - ime_status_cache.timestamp < 1000 then
+                    return ime_status_cache.value
+                end
+                
                 local handle = io.popen("ibus engine 2>/dev/null")
                 if handle then
                     local result = handle:read("*a")
                     handle:close()
                     if result and result:match("hangul") then
-                        return "🇰🇷 한글"
+                        ime_status_cache.value = "🇰🇷 한글"
+                    else
+                        ime_status_cache.value = "🇺🇸 EN"
                     end
+                    ime_status_cache.timestamp = current_time
                 end
-                return "🇺🇸 EN"
+                return ime_status_cache.value
             end
 
             require('lualine').setup({
@@ -65,23 +78,29 @@ return {
                     lualine_y = {'progress'},
                     lualine_z = {'location'}
                 },
-                -- 업데이트 주기 조정 (IME 상태 반영)
+                -- 업데이트 주기 조정 (IME 상태 반영을 위한 최적화)
                 refresh = {
-                    statusline = 200,  -- 200ms마다 업데이트
+                    statusline = 500,  -- 500ms마다 업데이트 (200에서 증가, CPU 부하 감소)
                 }
             })
         end,
     },
 
-    -- 4. Treesitter (Syntax Highlight)
+    -- 4. Treesitter (Syntax Highlight) - 최적화된 설정
     {
         "nvim-treesitter/nvim-treesitter",
+        event = { "BufReadPost", "BufNewFile" }, -- 파일 열 때만 로드
         build = ":TSUpdate",
         opts = {
             ensure_installed = { "c", "cpp", "lua", "vim", "vimdoc", "bash", "python", "rust" },
             auto_install = true,
-            highlight = { enable = true },
+            highlight = { 
+                enable = true,
+                additional_vim_regex_highlighting = false, -- Vim regex 하이라이팅 비활성화 (성능 개선)
+            },
             indent = { enable = true },
+            -- 증분 선택 비활성화 (사용하지 않는다면)
+            incremental_selection = { enable = false },
         },
     },
 
@@ -94,16 +113,24 @@ return {
         end,
     },
 
-    -- 6. Fuzzy Finder (Telescope)
+    -- 6. Fuzzy Finder (Telescope) - 명령어 사용 시에만 로드
     {
         "nvim-telescope/telescope.nvim",
         dependencies = { "nvim-lua/plenary.nvim" },
+        cmd = "Telescope", -- Telescope 명령어 사용 시에만 로드
+        keys = {
+            { "<leader>ff", "<cmd>Telescope find_files<cr>", desc = "Find Files" },
+            { "<leader>fg", "<cmd>Telescope live_grep<cr>", desc = "Live Grep" },
+            { "<leader>fb", "<cmd>Telescope buffers<cr>", desc = "Find Buffers" },
+            { "<leader>fh", "<cmd>Telescope help_tags<cr>", desc = "Help Tags" },
+        },
         config = function()
-            local builtin = require('telescope.builtin')
-            vim.keymap.set('n', '<leader>ff', builtin.find_files, { desc = 'Find Files' })
-            vim.keymap.set('n', '<leader>fg', builtin.live_grep, { desc = 'Live Grep' })
-            vim.keymap.set('n', '<leader>fb', builtin.buffers, { desc = 'Find Buffers' })
-            vim.keymap.set('n', '<leader>fh', builtin.help_tags, { desc = 'Help Tags' })
+            require('telescope').setup({
+                defaults = {
+                    -- 성능 최적화
+                    file_ignore_patterns = { "node_modules", ".git/", "build/", "*.o", "*.a" },
+                }
+            })
         end,
     },
 
@@ -113,7 +140,7 @@ return {
         event = { "BufReadPost", "InsertEnter" },
         config = function()
             require("illuminate").configure({
-                delay = 200,
+                delay = 100,  -- 100ms로 단축 (200에서 개선, 더 빠른 강조)
                 filetypes_denylist = {
                     "dirvish",
                     "fugitive",

@@ -57,7 +57,8 @@ if ! command -v nvim &> /dev/null; then
 else
     # 버전 체크 (v0.9 미만이면 재설치 유도)
     CURRENT_VER=$(nvim --version | head -n1 | grep -oP 'v\K[0-9]+\.[0-9]+')
-    if [[ "$CURRENT_VER" < "0.9" ]]; then
+    # 버전을 숫자로 비교 (0.9 미만 체크)
+    if awk -v ver="$CURRENT_VER" 'BEGIN {exit !(ver < 0.9)}'; then
         echo -e "${YELLOW}Detected old Neovim version ($CURRENT_VER). Re-installing latest...${NC}"
         INSTALL_NVIM=true
     fi

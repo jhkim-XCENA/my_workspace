@@ -12,3 +12,11 @@ vim.keymap.set('i', '<Up>',    '<C-o>k', { noremap = true })
 vim.keymap.set('i', '<Down>',  '<C-o>j', { noremap = true })
 vim.keymap.set('i', '<Left>',  '<C-o>h', { noremap = true })
 vim.keymap.set('i', '<Right>', '<C-o>l', { noremap = true })
+
+-- End key behavior: move to actual end of line
+vim.keymap.set('n', '<End>', '$', { noremap = true })
+vim.keymap.set('i', '<End>', '<C-o>$', { noremap = true })
+
+-- Home key behavior: move to first non-blank character
+vim.keymap.set('n', '<Home>', '^', { noremap = true })
+vim.keymap.set('i', '<Home>', '<C-o>^', { noremap = true })

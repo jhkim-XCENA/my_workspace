@@ -20,7 +20,8 @@ opt.ignorecase = true         -- 검색 시 대소문자 무시
 opt.smartcase = true          -- 대문자 섞이면 대소문자 구분
 opt.termguicolors = true      -- 24bit 트루컬러 사용
 opt.scrolloff = 8             -- 스크롤 시 위아래 여백 확보
-opt.updatetime = 50           -- 반응 속도 (기본 4000ms -> 50ms)
+opt.updatetime = 50           -- 반응 속도 (기본 4000ms -> 50ms로 단축, Copilot 응답 개선)
+opt.virtualedit = "onemore"   -- 커서가 줄의 끝을 넘어 이동 가능 (Normal mode에서)
 opt.guicursor = "n-c:ver25-blinkwait200-blinkon200-blinkoff200,i-ci-ve:ver25-blinkwait200-blinkon200-blinkoff200,r-cr:block-blinkwait200-blinkon200-blinkoff200,o:hor50,v:block-blinkwait200-blinkon200-blinkoff200"  -- Normal=세로선, Insert=우향화살표, Visual/Replace=블록, 0.2초 깜빡임
 opt.clipboard = "unnamedplus" -- 시스템 클립보드 사용
 opt.cmdheight = 1
@@ -70,7 +71,7 @@ vim.keymap.set('v', 'a', '<Esc>i', { noremap = true, silent = true })
 -- 하지만 기존 구조를 유지하기 위해 아래 require를 유지하되, 내용은 Lazy spec에 맞게 수정했습니다.
 
 -- 키 입력 타이밍 설정 (방향키 딜레이 해결)
-opt.timeoutlen = 500        -- 매핑 완성을 기다리는 시간 (ms)
+opt.timeoutlen = 300        -- 매핑 완성을 기다리는 시간 (ms) - 500에서 300으로 단축
 opt.ttimeoutlen = 10        -- 터미널 시퀀스 타이밍 (매우 중요!) - 10ms로 낮게 설정
 
 -- 키 입력 타이밍 설정 - keyremap.lua 로드

@@ -39,12 +39,14 @@ if ! grep -q "export PATH=\$PATH:\$(go env GOPATH)/bin" "$HOME/.bashrc"; then
     echo 'export PATH=$PATH:$(go env GOPATH)/bin' >> "$HOME/.bashrc"
 fi
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-$SUDO echo $SCRIPT_DIR
+echo "Note: To apply PATH changes, run: source ~/.bashrc"
 
-$SUDO cd $SCRIPT_DIR
-$SUDO cd nvim
-$SUDO source ./install.sh
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+echo "Script directory: $SCRIPT_DIR"
+
+# cd는 현재 셸에서 실행되어야 하므로 sudo 없이 실행
+cd "$SCRIPT_DIR/nvim" || exit 1
+bash ./install.sh
 cd ..
 
 BASHRC_FILE="$HOME/.bashrc"
@@ -80,4 +82,6 @@ echo "### jhkim-config ps1 start" >> "$BASHRC_FILE"
 echo 'export PS1="\[\033[38;5;135m\][\A] \W\$\[\033[0m\] "' >> "$BASHRC_FILE"
 echo "### jhkim-config ps1 end" >> "$BASHRC_FILE"
 
-source ~/.bashrc
+echo ""
+echo "Setup complete! To apply all changes, run:"
+echo "  source ~/.bashrc"
