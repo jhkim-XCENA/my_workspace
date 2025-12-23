@@ -72,7 +72,7 @@ vim.keymap.set('v', 'a', '<Esc>i', { noremap = true, silent = true })
 
 -- 키 입력 타이밍 설정 (방향키 딜레이 해결)
 opt.timeoutlen = 300        -- 매핑 완성을 기다리는 시간 (ms) - 500에서 300으로 단축
-opt.ttimeoutlen = 10        -- 터미널 시퀀스 타이밍 (매우 중요!) - 10ms로 낮게 설정
+opt.ttimeoutlen = 0         -- 터미널 시퀀스 타이밍 (즉시 처리!) - 0ms로 설정하여 딜레이 완전 제거
 
 -- 키 입력 타이밍 설정 - keyremap.lua 로드
 local config_path = vim.fn.stdpath("config")

@@ -39,8 +39,6 @@ vim.lsp.config.clangd = {
         "--completion-style=detailed",
         "--function-arg-placeholders",
         "--query-driver=/usr/bin/g++,/usr/bin/gcc",
-        "-I/usr/local/mu_library/mu/include",
-        "-I/usr/local/include",
     },
     capabilities = capabilities,
     root_markers = { '.git', 'CMakeLists.txt', 'compile_commands.json' },
@@ -53,12 +51,6 @@ vim.lsp.config.clangd = {
             },
         },
     },
-    on_attach = function(client, bufnr)
-        -- Disable specific clangd diagnostics
-        vim.diagnostic.config({
-            virtual_text = true,
-        }, vim.diagnostic.get_namespace(client.id))
-    end,
 }
 vim.lsp.enable('clangd')
 
