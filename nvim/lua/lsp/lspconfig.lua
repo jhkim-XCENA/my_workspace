@@ -35,15 +35,50 @@ vim.lsp.config.clangd = {
         "clangd",
         "--background-index",
         "--clang-tidy",
-        "--header-insertion=iwyu",
+        "--header-insertion=never",
         "--completion-style=detailed",
         "--function-arg-placeholders",
+        "--query-driver=/usr/bin/g++,/usr/bin/gcc",
+        "-I/usr/local/mu_library/mu/include",
+        "-I/usr/local/include",
     },
     capabilities = capabilities,
     root_markers = { '.git', 'CMakeLists.txt', 'compile_commands.json' },
     filetypes = { 'c', 'cpp', 'objc', 'objcpp', 'cuda', 'proto', 'h', 'hpp', 'hh', 'hxx' },
+    settings = {
+        clangd = {
+            fallbackFlags = {
+                "-I/usr/local/mu_library/mu/include",
+                "-I/usr/local/include",
+            },
+        },
+    },
+    on_attach = function(client, bufnr)
+        -- Disable specific clangd diagnostics
+        vim.diagnostic.config({
+            virtual_text = true,
+        }, vim.diagnostic.get_namespace(client.id))
+    end,
 }
 vim.lsp.enable('clangd')
+
+-- Disable "missing header" and "unused include" diagnostics for clangd
+vim.lsp.handlers["textDocument/publishDiagnostics"] = function(err, result, ctx, config)
+    if result and result.diagnostics then
+        result.diagnostics = vim.tbl_filter(function(d)
+            local msg = d.message or ""
+            -- Filter out "No header providing" and "Included header" diagnostics
+            if string.match(msg, "No header providing") then
+                return false
+            end
+            if string.match(msg, "Included header") then
+                return false
+            end
+            return true
+        end, result.diagnostics)
+    end
+    vim.lsp.diagnostic.on_publish_diagnostics(err, result, ctx, config)
+end
 
 -- [Rust] rust_analyzer
 vim.lsp.config.rust_analyzer = {
