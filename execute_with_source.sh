@@ -83,5 +83,6 @@ echo 'export PS1="\[\033[38;5;135m\][\A] \W\$\[\033[0m\] "' >> "$BASHRC_FILE"
 echo "### jhkim-config ps1 end" >> "$BASHRC_FILE"
 
 echo ""
-echo "Setup complete! To apply all changes, run:"
+source ~/.bashrc
+echo "Setup complete! Run:"
 echo "  source ~/.bashrc"

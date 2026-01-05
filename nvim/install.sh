@@ -116,6 +116,7 @@ add_aliases() {
             echo "alias vi='nvim'" >> "$RC_FILE"
             echo "alias vim='nvim'" >> "$RC_FILE"
             echo "alias view='nvim -R'" >> "$RC_FILE"
+            echo "alias c='clear'" >> "$RC_FILE"
             echo "# -------------------------------------------" >> "$RC_FILE"
             echo -e "${GREEN}Added aliases to $SHELL_NAME config ($RC_FILE)${NC}"
         fi

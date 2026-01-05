@@ -19,9 +19,9 @@ vim.api.nvim_create_autocmd('LspAttach', {
         keymap('n', 'gr', vim.lsp.buf.references, opts)      -- 참조 찾기
         
         -- 포맷팅
-        keymap('n', '<space>f', function()
-            vim.lsp.buf.format { async = true }
-        end, opts)
+        -- keymap('n', '<space>f', function()
+        --     vim.lsp.buf.format { async = true }
+        -- end, opts)
     end,
 })
 
@@ -48,6 +48,7 @@ vim.lsp.config.clangd = {
             fallbackFlags = {
                 "-I/usr/local/mu_library/mu/include",
                 "-I/usr/local/include",
+                "-isystem /usr/local/include/xddi",
             },
         },
     },
