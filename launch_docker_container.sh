@@ -38,6 +38,7 @@ docker run -dit \
   --name $container_name \
   --privileged \
   -v $mount_dir:/shared/   \
+  -w /shared \
   -v ~/.gitconfig:/root/.gitconfig \
   -v $HOME/.ssh:/root/.ssh:ro \
   -v ~/.config/github-copilot:/root/.config/github-copilot \
@@ -45,9 +46,9 @@ docker run -dit \
   -e GITHUB_TOKEN=$TOKEN \
   -e LANG=C.UTF-8 \
   -e LC_ALL=C.UTF-8 \
---device=/dev/kvm --cap-add=SYS_ADMIN -e USER=$USER xcenadev/sdk:latest
+  xcenadev/sdk:latest
 
 echo "Launched container: $container_name"
-echo "docker exec -it $container_name /bin/bash"
+echo "docker exec -it $container_name bash -c "
 
 
