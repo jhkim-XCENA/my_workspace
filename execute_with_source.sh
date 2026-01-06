@@ -29,18 +29,6 @@ if ! command -v go &> /dev/null; then
     $SUDO apt install -y golang-go
 fi
 
-# glow (마크다운 뷰어) 설치
-echo "Installing glow (Markdown viewer)..."
-go install github.com/charmbracelet/glow@latest
-
-# glow를 PATH에 추가
-export PATH=$PATH:$(go env GOPATH)/bin
-if ! grep -q "export PATH=\$PATH:\$(go env GOPATH)/bin" "$HOME/.bashrc"; then
-    echo 'export PATH=$PATH:$(go env GOPATH)/bin' >> "$HOME/.bashrc"
-fi
-
-echo "Note: To apply PATH changes, run: source ~/.bashrc"
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 echo "Script directory: $SCRIPT_DIR"
 

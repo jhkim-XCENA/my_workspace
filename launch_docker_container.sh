@@ -1,6 +1,18 @@
 #!/bin/bash
 image_name=xcenadev/sdk:latest
 
+BASH_SOURCE_VAR="${BASH_SOURCE[0]}"
+REL_SCRIPT_PATH="$(dirname $BASH_SOURCE_VAR)"
+SCRIPT_PATH="$(cd $REL_SCRIPT_PATH && pwd)"
+
+TOKEN=$(cat $SCRIPT_PATH/token.txt)
+echo $TOKEN
+
+if [ -z "$TOKEN" ]; then
+    echo "fill your token into ${SCRIPT_PATH}/token.txt"
+    exit 1
+fi
+
 # name: jhkim{yymmdd}
 date_str=$(date +%y%m%d)
 container_name=jhkim${date_str}
@@ -19,6 +31,7 @@ docker run -dit \
  -v ~/.gitconfig:/root/.gitconfig \
 -v $HOME/.ssh:/root/.ssh:ro \
   -e GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=accept-new" \
+  -e GITHUB_TOKEN=$TOKEN \
   -v ~/.config/github-copilot:/root/.config/github-copilot \
   -e LANG=C.UTF-8 \
   -e LC_ALL=C.UTF-8 \
