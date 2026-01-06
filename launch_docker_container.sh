@@ -52,6 +52,6 @@ docker run -dit \
   xcenadev/sdk:latest
 
 echo "Launched container: $container_name"
-echo "docker exec -it $container_name bash -c "
+echo "docker exec -it $container_name bash"
 
 
