@@ -39,10 +39,13 @@ docker run -dit \
   --privileged \
   -v $mount_dir:/shared/   \
   -w /shared \
-  -v ~/.gitconfig:/root/.gitconfig \
   -v $HOME/.ssh:/root/.ssh:ro \
   -v ~/.config/github-copilot:/root/.config/github-copilot \
   -e GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=accept-new" \
+  -e GIT_AUTHOR_NAME="jhkim-XCENA" \
+  -e GIT_AUTHOR_EMAIL="jeongho.kim@xcena.com" \
+  -e GIT_COMMITTER_NAME="jhkim-XCENA" \
+  -e GIT_COMMITTER_EMAIL="jeongho.kim@xcena.com" \
   -e GITHUB_TOKEN=$TOKEN \
   -e LANG=C.UTF-8 \
   -e LC_ALL=C.UTF-8 \
