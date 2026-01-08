@@ -23,11 +23,12 @@ nvm install --lts
 # copilot cli 설치
 npm install -g @github/copilot
 
-# Go 설치 (이미 설치되어 있으면 스킵)
-if ! command -v go &> /dev/null; then
-    echo "Installing Go..."
-    $SUDO apt install -y golang-go
-fi
+# install glow
+mkdir -p /etc/apt/keyrings
+curl -fsSL https://repo.charm.sh/apt/gpg.key | gpg --dearmor -o /etc/apt/keyrings/charm.gpg
+echo "deb [signed-by=/etc/apt/keyrings/charm.gpg] https://repo.charm.sh/apt/ * *" | tee /etc/apt/sources.list.d/charm.list
+apt update && apt install glow
+
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 echo "Script directory: $SCRIPT_DIR"

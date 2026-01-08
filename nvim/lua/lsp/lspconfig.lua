@@ -41,17 +41,8 @@ vim.lsp.config.clangd = {
         "--query-driver=/usr/bin/g++,/usr/bin/gcc",
     },
     capabilities = capabilities,
-    root_markers = { '.git', 'CMakeLists.txt', 'compile_commands.json' },
+    root_markers = { '.git', 'CMakeLists.txt', 'compile_commands.json', '.clangd' },
     filetypes = { 'c', 'cpp', 'objc', 'objcpp', 'cuda', 'proto', 'h', 'hpp', 'hh', 'hxx' },
-    settings = {
-        clangd = {
-            fallbackFlags = {
-                "-I/usr/local/mu_library/mu/include",
-                "-I/usr/local/include",
-                "-isystem /usr/local/include/xddi",
-            },
-        },
-    },
 }
 vim.lsp.enable('clangd')
 

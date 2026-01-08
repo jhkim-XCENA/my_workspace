@@ -1,0 +1,19 @@
+If:
+  PathMatch: /usr/local/mu_library/.*
+
+CompileFlags:
+  Add:
+    - "-I/usr/local/mu_library/mu/include"
+    - "-I/usr/local/include"
+    - "-std=c++17"
+
+---
+CompileFlags:
+  Add:
+    - "-std=c++17"
+
+InlayHints:
+  Enabled: true
+
+Index:
+  Background: Build
