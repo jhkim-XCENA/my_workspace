@@ -137,17 +137,31 @@ return {
     -- 7. 단어 강조 (vim-illuminate)
     {
         "RRethy/vim-illuminate",
-        event = { "BufReadPost", "InsertEnter" },
+        event = { "BufReadPost", "BufNewFile" },
         config = function()
             require("illuminate").configure({
-                delay = 100,  -- 100ms로 단축 (200에서 개선, 더 빠른 강조)
+                delay = 50,  -- 더 빠른 반응 (50ms)
+                providers = {
+                    "lsp",
+                    "treesitter",
+                    "regex",
+                },
                 filetypes_denylist = {
                     "dirvish",
                     "fugitive",
                     "nvimtree",
                     "TelescopePrompt",
                 },
+                min_count_to_highlight = 1, -- 1개 매치부터 강조
+                under_cursor = true, -- 커서 위치 단어도 강조
             })
+            
+            -- 강조 색상 커스터마이징 (onedark 테마에 맞게)
+            vim.cmd([=[
+              highlight IlluminatedWord cterm=underline gui=underline guibg=#3a3f4b
+              highlight IlluminatedCWord cterm=underline gui=underline guibg=#3a3f4b
+              highlight IlluminatedWordText cterm=underline gui=underline guibg=#3a3f4b
+            ]=])
         end,
     },
 

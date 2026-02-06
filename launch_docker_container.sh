@@ -33,12 +33,10 @@ if [ "$(docker ps -a -q -f name=^/${container_name}$)" ]; then
   done
   container_name=${container_name}_${suffix}
 fi
-
 docker run -dit \
-  --name $container_name \
-  --privileged \
-  -v $mount_dir:/shared/   \
-  -w /shared \
+ --name $container_name \
+ -v /home/jhkim/shared:/shared/   \
+ -v ~/.gitconfig:/root/.gitconfig \
   -v $HOME/.ssh:/root/.ssh:ro \
   -v ~/.config/github-copilot:/root/.config/github-copilot \
   -e GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=accept-new" \
@@ -49,7 +47,7 @@ docker run -dit \
   -e GITHUB_TOKEN=$TOKEN \
   -e LANG=C.UTF-8 \
   -e LC_ALL=C.UTF-8 \
-  xcenadev/sdk:latest
+--device=/dev/kvm --cap-add=SYS_ADMIN -e USER=$USER ${image_name}
 
 echo "Launched container: $container_name"
 echo "docker exec -it $container_name bash"
