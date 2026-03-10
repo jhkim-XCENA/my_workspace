@@ -3,7 +3,7 @@ set -euo pipefail
 
 # --- Configuration ---
 mount_dir="/home/jhkim/shared"
-image_name="192.168.57.60:8008/sdk_release/xcena_sdk_81c21@sha256:cd848f566914203014e8dcf0b07f0c9bff7b3d2c13079df0c705e0b065ed95fc"
+image_name="192.168.57.60:8008/sdk_release/sdk_release:latest"
 CLAUDE_BINARY="$HOME/.local/share/claude/versions/2.1.72"
 CLAUDE_CONFIG_DIR="$HOME/.claude"
 CONTAINER_USER="jhkim"
@@ -55,8 +55,8 @@ docker run -dit \
   -v "$HOME/.ssh:/home/${CONTAINER_USER}/.ssh:ro" \
   -v "$HOME/.config/github-copilot:/home/${CONTAINER_USER}/.config/github-copilot" \
   -v "${CLAUDE_BINARY}:/usr/local/bin/claude:ro" \
-  -v "${CLAUDE_CONFIG_DIR}/.credentials.json:/home/${CONTAINER_USER}/.claude/.credentials.json:ro" \
-  -v "${CLAUDE_CONFIG_DIR}/settings.json:/home/${CONTAINER_USER}/.claude/settings.json:ro" \
+  -v "${CLAUDE_CONFIG_DIR}/.credentials.json:/home/${CONTAINER_USER}/.claude/.credentials.json" \
+  -v "${CLAUDE_CONFIG_DIR}/settings.json:/home/${CONTAINER_USER}/.claude/settings.json" \
   -e GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=accept-new" \
   -e GIT_AUTHOR_NAME="jhkim-XCENA" \
   -e GIT_AUTHOR_EMAIL="jeongho.kim@xcena.com" \
@@ -74,9 +74,11 @@ docker run -dit \
 docker exec "$container_name" bash -c '
   CUSER="jhkim"
 
-  # Create user (skip if already exists)
+  # Create user with host UID to match bind mount file ownership
+  HOST_UID='"$(id -u)"'
   if ! id "$CUSER" &>/dev/null; then
-    useradd -m -s /bin/bash -u 1000 "$CUSER"
+    useradd -m -s /bin/bash -u "$HOST_UID" "$CUSER" \
+      || useradd -m -s /bin/bash -o -u "$HOST_UID" "$CUSER"
   fi
 
   # Install sudo if not available
@@ -96,10 +98,13 @@ docker exec "$container_name" bash -c '
   chown -R "$CUSER":"$CUSER" /home/"$CUSER"/.claude 2>/dev/null || true
   mkdir -p /home/"$CUSER"/.config
   chown -R "$CUSER":"$CUSER" /home/"$CUSER"/.config 2>/dev/null || true
+
+  # Auto-switch to jhkim when entering as root via "docker exec -it <container> bash"
+  echo "if [ \"\$(id -u)\" = \"0\" ] && [ -t 0 ]; then exec su - $CUSER; fi" >> /root/.bashrc
 '
 
 # --- Output ---
 echo ""
 echo "Launched container: $container_name"
-echo "  docker exec -it -u ${CONTAINER_USER} -w /shared $container_name bash"
+echo "  docker exec -it $container_name bash  (auto-switches to ${CONTAINER_USER})"
 echo "  Claude Code: claude --dangerously-skip-permissions"
