@@ -1,6 +1,6 @@
 #!/bin/bash
-mount_dir=/home/jhkim/shared
-image_name=xcenadev/sdk:latest
+mount_dir=/home/jhkim/shared/
+image_name="192.168.57.60:8008/sdk_release/xcena_sdk_81c21@sha256:cd848f566914203014e8dcf0b07f0c9bff7b3d2c13079df0c705e0b065ed95fc"
 
 # check mount dir
 if [ -d "$mount_dir" ]; then
