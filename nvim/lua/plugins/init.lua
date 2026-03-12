@@ -7,10 +7,8 @@ return {
         "olimorris/onedarkpro.nvim",
         priority = 1000,
         config = function()
-            require("onedarkpro").setup({
-                style = "darker",
-            })
-            vim.cmd.colorscheme("onedark")
+            require("onedarkpro").setup({})
+            vim.cmd.colorscheme("onedark_dark")
         end,
     },
 
