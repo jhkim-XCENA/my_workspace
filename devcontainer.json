@@ -1,0 +1,72 @@
+{
+	"name": "SDK Release Dev Container",
+	"image": "192.168.57.60:8008/sdk_release/sdk_release:latest",
+	"workspaceFolder": "/shared",
+	"remoteUser": "jhkim",
+	"mounts": [
+		"source=${localWorkspaceFolder}/sdk_release,target=/sdk_release,type=bind",
+		"source=${localWorkspaceFolder}/llvm-project,target=/llvm-project,type=bind",
+		"source=${localEnv:HOME}/.gitconfig,target=/home/jhkim/.gitconfig,type=bind,readonly",
+		"source=${localEnv:HOME}/.ssh,target=/home/jhkim/.ssh,type=bind,readonly",
+		"source=${localEnv:HOME}/.config/github-copilot,target=/home/jhkim/.config/github-copilot,type=bind",
+		"source=${localEnv:HOME}/.local/share/claude/versions/2.1.72,target=/usr/local/bin/claude,type=bind,readonly",
+		"source=${localEnv:HOME}/.claude/.credentials.json,target=/home/jhkim/.claude/.credentials.json,type=bind",
+		"source=${localEnv:HOME}/.claude/settings.json,target=/home/jhkim/.claude/settings.json,type=bind"
+	],
+	"containerEnv": {
+		"GIT_SSH_COMMAND": "ssh -o StrictHostKeyChecking=accept-new",
+		"GIT_AUTHOR_NAME": "jhkim-XCENA",
+		"GIT_AUTHOR_EMAIL": "jeongho.kim@xcena.com",
+		"GIT_COMMITTER_NAME": "jhkim-XCENA",
+		"GIT_COMMITTER_EMAIL": "jeongho.kim@xcena.com",
+		"GITHUB_TOKEN": "${localEnv:GITHUB_TOKEN}",
+		"USER": "jhkim",
+		"LANG": "C.UTF-8",
+		"LC_ALL": "C.UTF-8"
+	},
+	"runArgs": [
+		"--device=/dev/kvm",
+		"--cap-add=SYS_ADMIN"
+	],
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-vscode.cpptools",
+				"ms-vscode.cmake-tools",
+				"llvm-vs-code-extensions.vscode-clangd",
+				"ms-vscode.makefile-tools"
+			],
+			"settings": {
+				"C_Cpp.default.compileCommands": "/sdk_release/tools/pxcc/build/compile_commands.json",
+				"C_Cpp.default.includePath": [
+					"/sdk_release/tools/pxcc/src",
+					"/usr/include/c++/11",
+					"/usr/include"
+				],
+				"clangd.arguments": [
+					"--compile-commands-dir=/sdk_release/tools/pxcc/build",
+					"--header-insertion=iwyu"
+				],
+				"editor.formatOnSave": true,
+				"editor.defaultFormatter": "ms-vscode.cpptools",
+				"[cpp]": {
+					"editor.defaultFormatter": "ms-vscode.cpptools",
+					"editor.formatOnSave": true
+				},
+				"cmake.generator": "Ninja",
+				"cmake.buildDirectory": "/sdk_release/tools/pxcc/build"
+			}
+		}
+	},
+	"features": {
+		"ghcr.io/devcontainers/features/common-utils:2": {
+			"installZsh": false
+		}
+	},
+	"postCreateCommand": "HOST_UID=$(id -u) && CUSER=jhkim && if ! id $CUSER &>/dev/null; then sudo useradd -m -s /bin/bash -u $HOST_UID $CUSER || sudo useradd -m -s /bin/bash -o -u $HOST_UID $CUSER; fi && sudo usermod -aG sudo $CUSER 2>/dev/null || true && echo \"$CUSER ALL=(ALL) NOPASSWD:ALL\" | sudo tee /etc/sudoers.d/$CUSER > /dev/null && sudo chmod 440 /etc/sudoers.d/$CUSER && sudo chown $CUSER:$CUSER /home/$CUSER && sudo chown -R $CUSER:$CUSER /home/$CUSER/.claude 2>/dev/null || true && sudo mkdir -p /home/$CUSER/.config && sudo chown -R $CUSER:$CUSER /home/$CUSER/.config 2>/dev/null || true",
+	"forwardPorts": [],
+	"portsAttributes": {},
+	"otherPortsAttributes": {
+		"onAutoForward": "notify"
+	}
+}

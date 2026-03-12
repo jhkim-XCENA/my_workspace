@@ -33,6 +33,15 @@ apt update && apt install glow
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 echo "Script directory: $SCRIPT_DIR"
 
+# GitHub token 설정
+TOKEN="$(cat "$SCRIPT_DIR/token.txt" 2>/dev/null || true)"
+if [ -n "$TOKEN" ]; then
+    export GITHUB_TOKEN="$TOKEN"
+    echo "GITHUB_TOKEN set from token.txt"
+else
+    echo "Warning: token.txt not found, GITHUB_TOKEN not set"
+fi
+
 # cd는 현재 셸에서 실행되어야 하므로 sudo 없이 실행
 cd "$SCRIPT_DIR/nvim" || exit 1
 bash ./install.sh
