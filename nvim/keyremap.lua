@@ -21,7 +21,6 @@ vim.keymap.set('i', '<End>', '<C-o>$', { noremap = true })
 vim.keymap.set('n', '<Home>', '^', { noremap = true })
 vim.keymap.set('i', '<Home>', '<C-o>^', { noremap = true })
 
--- 키 반복 딜레이 최소화 (init.lua의 설정과 중복되지만 명시적으로 여기서도 설정)
 -- ttimeoutlen=0으로 설정하여 터미널 시퀀스를 즉시 처리
-vim.opt.timeoutlen = 200
+-- timeoutlen은 init.lua에서 설정 (300ms)
 vim.opt.ttimeoutlen = 0

@@ -11,23 +11,21 @@ if [[ $EUID -ne 0 ]]; then
     SUDO="sudo"
 fi
 
-# npm 설치
+# Node.js 설치 (nodesource v22.x - install.sh에서도 동일 버전 사용)
 $SUDO apt update
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+if ! command -v node &> /dev/null || [ "$(node -v | grep -oP 'v\K[0-9]+')" -lt 22 ]; then
+    curl -fsSL https://deb.nodesource.com/setup_22.x | $SUDO -E bash -
+    $SUDO apt install -y nodejs
+fi
 
-# 즉시 사용을 위해 환경변수 직접 로드 (bashrc 대신)
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-
-nvm install --lts
 # copilot cli 설치
 npm install -g @github/copilot
 
 # install glow
-mkdir -p /etc/apt/keyrings
-curl -fsSL https://repo.charm.sh/apt/gpg.key | gpg --dearmor -o /etc/apt/keyrings/charm.gpg
-echo "deb [signed-by=/etc/apt/keyrings/charm.gpg] https://repo.charm.sh/apt/ * *" | tee /etc/apt/sources.list.d/charm.list
-apt update && apt install glow
+$SUDO mkdir -p /etc/apt/keyrings
+curl -fsSL https://repo.charm.sh/apt/gpg.key | $SUDO gpg --dearmor -o /etc/apt/keyrings/charm.gpg
+echo "deb [signed-by=/etc/apt/keyrings/charm.gpg] https://repo.charm.sh/apt/ * *" | $SUDO tee /etc/apt/sources.list.d/charm.list
+$SUDO apt update && $SUDO apt install -y glow
 
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

@@ -47,11 +47,11 @@ vim.lsp.config.clangd = {
 vim.lsp.enable('clangd')
 
 -- Disable "missing header" and "unused include" diagnostics for clangd
+local default_handler = vim.lsp.handlers["textDocument/publishDiagnostics"]
 vim.lsp.handlers["textDocument/publishDiagnostics"] = function(err, result, ctx, config)
     if result and result.diagnostics then
         result.diagnostics = vim.tbl_filter(function(d)
             local msg = d.message or ""
-            -- Filter out "No header providing" and "Included header" diagnostics
             if string.match(msg, "No header providing") then
                 return false
             end
@@ -61,7 +61,7 @@ vim.lsp.handlers["textDocument/publishDiagnostics"] = function(err, result, ctx,
             return true
         end, result.diagnostics)
     end
-    vim.lsp.diagnostic.on_publish_diagnostics(err, result, ctx, config)
+    default_handler(err, result, ctx, config)
 end
 
 -- [Rust] rust_analyzer
@@ -97,10 +97,6 @@ vim.lsp.config.lua_ls = {
     },
 }
 vim.lsp.enable('lua_ls')
-
-vim.diagnostic.config({
-  signs = false,  -- 왼쪽 거터(Gutter)의 E, W 기호를 숨김
-})
 
 -- 3. 진단(Diagnostic) UI 설정
 vim.diagnostic.config({
