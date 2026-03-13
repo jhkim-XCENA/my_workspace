@@ -2,19 +2,21 @@
 set -euo pipefail
 
 # --- Configuration ---
-mount_dir="/home/jhkim/shared"
+SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+mount_dir="$SCRIPT_PATH"
 image_name="192.168.57.60:8008/sdk_release/sdk_release:latest"
 CLAUDE_BINARY="$HOME/.local/share/claude/versions/2.1.72"
 CLAUDE_CONFIG_DIR="$HOME/.claude"
 CONTAINER_USER="jhkim"
 
-# --- Validate mount dir ---
-if [ -d "$mount_dir" ]; then
-    echo "$mount_dir will be mounted as /shared in the container"
-else
-    echo "$mount_dir does not exist"
-    exit 1
-fi
+# --- Validate directories ---
+for dir in "$mount_dir/shared" "$mount_dir/sdk_release" "$mount_dir/llvm-project"; do
+    if [ ! -d "$dir" ]; then
+        echo "$dir does not exist"
+        exit 1
+    fi
+done
+echo "$mount_dir will be used as workspace root"
 
 # --- Validate Claude Code ---
 if [ ! -f "$CLAUDE_BINARY" ]; then
@@ -50,7 +52,9 @@ fi
 # --- Launch container ---
 docker run -dit \
   --name "$container_name" \
-  -v "/home/jhkim/shared:/shared" \
+  -v "$mount_dir/shared:/shared" \
+  -v "$mount_dir/sdk_release:/sdk_release" \
+  -v "$mount_dir/llvm-project:/llvm-project" \
   -v "$HOME/.gitconfig:/home/${CONTAINER_USER}/.gitconfig:ro" \
   -v "$HOME/.ssh:/home/${CONTAINER_USER}/.ssh:ro" \
   -v "$HOME/.config/github-copilot:/home/${CONTAINER_USER}/.config/github-copilot" \
