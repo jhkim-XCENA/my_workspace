@@ -1,2 +1,5 @@
 nvim/nvim
 nvim/lazy-lock.json
+sdk_release/
+llvm-project/
+shared/
