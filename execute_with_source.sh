@@ -6,6 +6,23 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     exit 1
 fi
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Check sdk_release and llvm-project repos
+if [ ! -d "$SCRIPT_DIR/sdk_release/.git" ]; then
+    read -p "sdk_release not found. Clone it? (y/n): " answer
+    if [ "$answer" = "y" ]; then
+        git clone git@github.com:xcena-dev/sdk_release.git "$SCRIPT_DIR/sdk_release"
+    fi
+fi
+
+if [ ! -d "$SCRIPT_DIR/llvm-project/.git" ]; then
+    read -p "llvm-project not found. Clone it? (y/n): " answer
+    if [ "$answer" = "y" ]; then
+        git clone git@github.com:xcena-dev/llvm-project-fork.git "$SCRIPT_DIR/llvm-project"
+    fi
+fi
+
 SUDO=""
 if [[ $EUID -ne 0 ]]; then
     SUDO="sudo"
@@ -28,7 +45,6 @@ echo "deb [signed-by=/etc/apt/keyrings/charm.gpg] https://repo.charm.sh/apt/ * *
 $SUDO apt update && $SUDO apt install -y glow
 
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 echo "Script directory: $SCRIPT_DIR"
 
 # GitHub token 설정
