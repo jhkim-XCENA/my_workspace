@@ -1,6 +1,5 @@
 nvim/nvim
 nvim/lazy-lock.json
-token.txt
 sdk_release/
 llvm-project/
 shared/
