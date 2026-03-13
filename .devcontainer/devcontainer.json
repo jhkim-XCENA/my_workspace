@@ -4,6 +4,7 @@
 	"workspaceFolder": "/shared",
 	"remoteUser": "jhkim",
 	"mounts": [
+		"source=${localWorkspaceFolder}/shared,target=/shared,type=bind",
 		"source=${localWorkspaceFolder}/sdk_release,target=/sdk_release,type=bind",
 		"source=${localWorkspaceFolder}/llvm-project,target=/llvm-project,type=bind",
 		"source=${localEnv:HOME}/.gitconfig,target=/home/jhkim/.gitconfig,type=bind,readonly",
