@@ -30,10 +30,10 @@ fi
 
 # --- Read GitHub token (for GitHub Copilot CLI) ---
 SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TOKEN="$(cat "$SCRIPT_PATH/token.txt" 2>/dev/null || true)"
+TOKEN="$(cat "$SCRIPT_PATH/token.txt" 2>/dev/null | tr -d '[:space:]')"
 
 if [ -z "$TOKEN" ]; then
-    echo "fill your token into ${SCRIPT_PATH}/token.txt"
+    echo "Error: token.txt is empty. Please fill in your GitHub token into ${SCRIPT_PATH}/token.txt"
     exit 1
 fi
 
