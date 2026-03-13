@@ -19,7 +19,7 @@ fi
 if [ ! -d "$SCRIPT_DIR/llvm-project/.git" ]; then
     read -p "llvm-project not found. Clone it? (y/n): " answer
     if [ "$answer" = "y" ]; then
-        git clone git@github.com:xcena-dev/llvm-project-fork.git "$SCRIPT_DIR/llvm-project"
+        git clone -b dev git@github.com:xcena-dev/llvm-project-fork.git "$SCRIPT_DIR/llvm-project"
     fi
 fi
 
