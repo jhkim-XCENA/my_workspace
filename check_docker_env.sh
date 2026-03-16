@@ -19,8 +19,6 @@ echo ""
 echo "[1] 호스트 파일 및 디렉토리"
 
 REQUIRED_DIRS=(
-    "/home/jhkim/shared/sdk_release"
-    "/home/jhkim/shared/llvm-project"
     "$HOME/.ssh"
     "$HOME/.config/github-copilot"
 )
@@ -108,26 +106,6 @@ if command -v code &>/dev/null; then
     fi
 else
     warn "code 명령어 없음 (VS Code CLI 미설치 — VS Code 내에서 직접 확인 필요)"
-fi
-
-echo ""
-
-# 5. devcontainer.json 위치
-echo "[5] devcontainer.json 배치"
-
-DEVCONTAINER_PATH="/home/jhkim/shared/.devcontainer/devcontainer.json"
-if [ -f "$DEVCONTAINER_PATH" ]; then
-    pass "$DEVCONTAINER_PATH"
-else
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    SOURCE="$SCRIPT_DIR/devcontainer.json"
-    if [ -f "$SOURCE" ]; then
-        fail "$DEVCONTAINER_PATH 없음 (다음 명령으로 배치 가능:)"
-        echo -e "       mkdir -p /home/jhkim/shared/.devcontainer"
-        echo -e "       cp $SOURCE $DEVCONTAINER_PATH"
-    else
-        fail "$DEVCONTAINER_PATH 없음"
-    fi
 fi
 
 echo ""
