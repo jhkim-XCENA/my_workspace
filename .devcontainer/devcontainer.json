@@ -5,8 +5,6 @@
 	"remoteUser": "jhkim",
 	"mounts": [
 		"source=${localWorkspaceFolder}/shared,target=/shared,type=bind",
-		"source=${localWorkspaceFolder}/sdk_release,target=/sdk_release,type=bind",
-		"source=${localWorkspaceFolder}/llvm-project,target=/llvm-project,type=bind",
 		"source=${localEnv:HOME}/.gitconfig,target=/home/jhkim/.gitconfig,type=bind,readonly",
 		"source=${localEnv:HOME}/.ssh,target=/home/jhkim/.ssh,type=bind,readonly",
 		"source=${localEnv:HOME}/.config/github-copilot,target=/home/jhkim/.config/github-copilot,type=bind",
@@ -64,7 +62,7 @@
 			"installZsh": false
 		}
 	},
-	"postCreateCommand": "HOST_UID=$(id -u) && CUSER=jhkim && if ! id $CUSER &>/dev/null; then sudo useradd -m -s /bin/bash -u $HOST_UID $CUSER || sudo useradd -m -s /bin/bash -o -u $HOST_UID $CUSER; fi && sudo usermod -aG sudo $CUSER 2>/dev/null || true && echo \"$CUSER ALL=(ALL) NOPASSWD:ALL\" | sudo tee /etc/sudoers.d/$CUSER > /dev/null && sudo chmod 440 /etc/sudoers.d/$CUSER && sudo chown $CUSER:$CUSER /home/$CUSER && sudo chown -R $CUSER:$CUSER /home/$CUSER/.claude 2>/dev/null || true && sudo mkdir -p /home/$CUSER/.config && sudo chown -R $CUSER:$CUSER /home/$CUSER/.config 2>/dev/null || true",
+	"postCreateCommand": "HOST_UID=$(id -u) && CUSER=jhkim && if ! id $CUSER &>/dev/null; then sudo useradd -m -s /bin/bash -u $HOST_UID $CUSER || sudo useradd -m -s /bin/bash -o -u $HOST_UID $CUSER; fi && sudo usermod -aG sudo $CUSER 2>/dev/null || true && echo \"$CUSER ALL=(ALL) NOPASSWD:ALL\" | sudo tee /etc/sudoers.d/$CUSER > /dev/null && sudo chmod 440 /etc/sudoers.d/$CUSER && sudo chown $CUSER:$CUSER /home/$CUSER && sudo chown -R $CUSER:$CUSER /home/$CUSER/.claude 2>/dev/null || true && sudo mkdir -p /home/$CUSER/.config && sudo chown -R $CUSER:$CUSER /home/$CUSER/.config 2>/dev/null || true && if [ ! -d /sdk_release/.git ]; then sudo mkdir -p /sdk_release && sudo chown $CUSER:$CUSER /sdk_release && git clone --depth 1 git@github.com:xcena-dev/sdk_release.git /sdk_release && cd /sdk_release && git submodule update --init --recursive --depth 1; fi && if [ ! -d /llvm-project/.git ]; then sudo mkdir -p /llvm-project && sudo chown $CUSER:$CUSER /llvm-project && git clone --depth 1 -b dev git@github.com:xcena-dev/llvm-project-fork.git /llvm-project; fi",
 	"forwardPorts": [],
 	"portsAttributes": {},
 	"otherPortsAttributes": {
