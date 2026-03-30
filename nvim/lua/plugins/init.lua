@@ -204,4 +204,28 @@ return {
             end,
         },
     },
+
+    -- 10. 자동 괄호/따옴표 짝 맞추기
+    {
+        "windwp/nvim-autopairs",
+        event = "InsertEnter",
+        opts = {},
+    },
+
+    -- 11. Git 변경 표시 (왼쪽 sign column에 +/-/~ 표시)
+    {
+        "lewis6991/gitsigns.nvim",
+        event = { "BufReadPost", "BufNewFile" },
+        opts = {},
+    },
+
+    -- 12. 주석 토글 (gcc: 현재 줄, gc: Visual 선택 영역)
+    {
+        "numToStr/Comment.nvim",
+        keys = {
+            { "gcc", mode = "n" },
+            { "gc", mode = "v" },
+        },
+        opts = {},
+    },
 }

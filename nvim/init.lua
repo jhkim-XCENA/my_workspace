@@ -27,6 +27,7 @@ opt.clipboard = "unnamedplus" -- 시스템 클립보드 사용
 opt.cmdheight = 1
 -- opt.guifont = "JetBrainsMono Nerd Font:h20"  -- 명령줄 글자 크기 20pt
 opt.autoread = true       -- 파일이 외부에서 수정되면 자동 새로고침
+opt.signcolumn = "yes"    -- sign column 항상 표시 (git/diagnostic 표시 시 화면 흔들림 방지)
 
 -- 한글 지원
 opt.encoding = "utf-8"
@@ -77,6 +78,9 @@ require("lazy").setup({
 
 -- Visual Mode에서 a를 누르면 Selection을 해제(Esc)하고 즉시 Insert(i) 모드로 진입
 vim.keymap.set('v', 'a', '<Esc>i', { noremap = true, silent = true })
+
+-- Esc로 검색 하이라이트 해제
+vim.keymap.set('n', '<Esc>', '<cmd>noh<CR>', { noremap = true, silent = true })
 
 -- 4. Load Extra Configs (LSP, Treesitter 등은 플러그인 파일에서 로드되지만 명시적 로드 필요 시)
 -- Lazy.nvim 방식에서는 보통 plugins/ 폴더 내에서 config() 함수로 처리하는 것이 깔끔합니다.
