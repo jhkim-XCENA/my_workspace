@@ -4,6 +4,8 @@ set -euo pipefail
 # --- Configuration ---
 SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 mount_dir="$SCRIPT_PATH"
+SETUP_LOG="$SCRIPT_PATH/setup.log"
+: > "$SETUP_LOG"
 image_name="192.168.57.60:8008/sdk_release/sdk_release:latest"
 CLAUDE_VERSIONS_DIR="$HOME/.local/share/claude/versions"
 CLAUDE_BINARY="$CLAUDE_VERSIONS_DIR/$(ls -v "$CLAUDE_VERSIONS_DIR" 2>/dev/null | tail -1)"
@@ -25,13 +27,19 @@ clone_if_missing() {
     local dir="$1"
     local repo="$2"
     if [ ! -d "$dir" ]; then
-        echo "Cloning $repo into $dir ..."
-        git clone "https://x-access-token:${TOKEN}@github.com/${repo}.git" "$dir"
+        echo "Cloning $repo ..."
+        git clone "https://x-access-token:${TOKEN}@github.com/${repo}.git" "$dir" >> "$SETUP_LOG" 2>&1
+    else
+        echo "[skip] $repo (already cloned)"
     fi
 }
 
 clone_if_missing "$parent_dir/sdk_release"   "xcena-dev/sdk_release"
 clone_if_missing "$parent_dir/llvm-project"  "xcena-dev/llvm-project-fork"
+
+# --- Update submodules ---
+echo "Updating submodules (sdk_release/tools/pxcc) ..."
+git -C "$parent_dir/sdk_release" submodule update --init tools/pxcc >> "$SETUP_LOG" 2>&1
 
 echo "$mount_dir will be used as workspace root"
 
@@ -48,7 +56,6 @@ fi
 # --- Generate container name: jhkim{yymmdd} ---
 date_str=$(date +%y%m%d)
 container_name="jhkim${date_str}"
-# if container exists, add a suffix number
 if [ "$(docker ps -a -q -f name="^/${container_name}$")" ]; then
     suffix=1
     while [ "$(docker ps -a -q -f name="^/${container_name}_${suffix}$")" ]; do
@@ -58,6 +65,7 @@ if [ "$(docker ps -a -q -f name="^/${container_name}$")" ]; then
 fi
 
 # --- Launch container ---
+echo "Launching container: $container_name ..."
 docker run -dit \
   --name "$container_name" \
   -v "$mount_dir:/shared" \
@@ -79,45 +87,49 @@ docker run -dit \
   -e LC_ALL=C.UTF-8 \
   --device=/dev/kvm \
   --cap-add=SYS_ADMIN \
-  "$image_name"
+  "$image_name" >> "$SETUP_LOG" 2>&1
 
-# --- Post-launch: create worker user and run setup ---
+# --- Post-launch: create worker user and bootstrap ---
+echo "Setting up $CONTAINER_USER user ..."
 docker exec "$container_name" bash -c '
   CUSER="worker"
+  HOST_UID='"$(id -u)"'
 
   # Create user with host UID to match bind mount file ownership
-  HOST_UID='"$(id -u)"'
   if ! id "$CUSER" &>/dev/null; then
     useradd -m -s /bin/bash -u "$HOST_UID" "$CUSER" \
       || useradd -m -s /bin/bash -o -u "$HOST_UID" "$CUSER"
   fi
 
-  # Install sudo if not available
-  if ! command -v sudo &>/dev/null; then
-    apt-get update -qq && apt-get install -y -qq sudo 2>/dev/null \
-      || yum install -y sudo 2>/dev/null \
-      || true
+  # Ensure .bashrc exists (useradd skips skel if home already exists)
+  if [ ! -f /home/"$CUSER"/.bashrc ]; then
+    cp /etc/skel/.bashrc /home/"$CUSER"/.bashrc 2>/dev/null \
+      || touch /home/"$CUSER"/.bashrc
   fi
+
+  # Install essential tools (curl, sudo) before user setup runs
+  apt-get update -qq
+  apt-get install -y -qq curl sudo 2>/dev/null
 
   # Grant passwordless sudo
   usermod -aG sudo "$CUSER" 2>/dev/null || true
   echo "${CUSER} ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/"$CUSER"
   chmod 440 /etc/sudoers.d/"$CUSER"
 
-  # Fix ownership of home directory and mounted config dirs
-  chown "$CUSER":"$CUSER" /home/"$CUSER"
+  # Fix ownership of home directory and all files inside
+  chown -R "$CUSER":"$CUSER" /home/"$CUSER"
   chown -R "$CUSER":"$CUSER" /home/"$CUSER"/.claude 2>/dev/null || true
-  mkdir -p /home/"$CUSER"/.config
-  chown -R "$CUSER":"$CUSER" /home/"$CUSER"/.config 2>/dev/null || true
 
-  # Auto-switch to worker when entering as root via "docker exec -it <container> bash"
+  # Auto-switch to worker when entering as root
   echo "if [ \"\$(id -u)\" = \"0\" ] && [ -t 0 ]; then exec su - $CUSER; fi" >> /root/.bashrc
-'
+' >> "$SETUP_LOG" 2>&1
 
 # --- Run execute_with_source.sh as worker inside container ---
+echo "Running environment setup inside container ..."
 docker exec -u "$CONTAINER_USER" "$container_name" bash -c 'cd /shared && source ./execute_with_source.sh'
 
 # --- Output ---
 echo ""
 echo "Launched container: $container_name"
-echo "  docker exec -it $container_name bash  (auto-switches to ${CONTAINER_USER})"
+echo "  docker exec -it $container_name bash"
+echo "  Detail log: $SETUP_LOG"
