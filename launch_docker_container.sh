@@ -69,13 +69,11 @@ echo "Launching container: $container_name ..."
 docker run -dit \
   --name "$container_name" \
   -v "$mount_dir:/shared" \
-  -v "$parent_dir/sdk_release:/sdk_release" \
-  -v "$parent_dir/llvm-project:/llvm-project" \
   -v "$HOME/.gitconfig:/home/${CONTAINER_USER}/.gitconfig:ro" \
   -v "$HOME/.ssh:/home/${CONTAINER_USER}/.ssh:ro" \
   -v "${CLAUDE_BINARY}:/usr/local/bin/claude:ro" \
-  -v "${CLAUDE_CONFIG_DIR}/.credentials.json:/home/${CONTAINER_USER}/.claude/.credentials.json" \
-  -v "${CLAUDE_CONFIG_DIR}/settings.json:/home/${CONTAINER_USER}/.claude/settings.json" \
+  -v "${CLAUDE_CONFIG_DIR}:/home/${CONTAINER_USER}/.claude" \
+  -v "$HOME/.claude.json:/home/${CONTAINER_USER}/.claude.json" \
   -e GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=accept-new" \
   -e GIT_AUTHOR_NAME="jhkim-XCENA" \
   -e GIT_AUTHOR_EMAIL="jeongho.kim@xcena.com" \
@@ -88,6 +86,12 @@ docker run -dit \
   --device=/dev/kvm \
   --cap-add=SYS_ADMIN \
   "$image_name" >> "$SETUP_LOG" 2>&1
+
+# --- Copy repos into container (isolated from host) ---
+echo "Copying sdk_release into container ..."
+docker cp "$parent_dir/sdk_release" "$container_name":/sdk_release >> "$SETUP_LOG" 2>&1
+echo "Copying llvm-project into container ..."
+docker cp "$parent_dir/llvm-project" "$container_name":/llvm-project >> "$SETUP_LOG" 2>&1
 
 # --- Post-launch: create worker user and bootstrap ---
 echo "Setting up $CONTAINER_USER user ..."
