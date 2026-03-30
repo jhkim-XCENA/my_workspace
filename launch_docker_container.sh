@@ -8,7 +8,7 @@ image_name="192.168.57.60:8008/sdk_release/sdk_release:latest"
 CLAUDE_VERSIONS_DIR="$HOME/.local/share/claude/versions"
 CLAUDE_BINARY="$CLAUDE_VERSIONS_DIR/$(ls -v "$CLAUDE_VERSIONS_DIR" 2>/dev/null | tail -1)"
 CLAUDE_CONFIG_DIR="$HOME/.claude"
-CONTAINER_USER="jhkim"
+CONTAINER_USER="worker"
 
 # --- Read GitHub token (for gh CLI and git clone) ---
 TOKEN="$(cat "$SCRIPT_PATH/token.txt" 2>/dev/null | tr -d '[:space:]')"
@@ -81,9 +81,9 @@ docker run -dit \
   --cap-add=SYS_ADMIN \
   "$image_name"
 
-# --- Post-launch: create non-root user with sudo ---
+# --- Post-launch: create worker user and run setup ---
 docker exec "$container_name" bash -c '
-  CUSER="jhkim"
+  CUSER="worker"
 
   # Create user with host UID to match bind mount file ownership
   HOST_UID='"$(id -u)"'
@@ -110,12 +110,14 @@ docker exec "$container_name" bash -c '
   mkdir -p /home/"$CUSER"/.config
   chown -R "$CUSER":"$CUSER" /home/"$CUSER"/.config 2>/dev/null || true
 
-  # Auto-switch to jhkim when entering as root via "docker exec -it <container> bash"
+  # Auto-switch to worker when entering as root via "docker exec -it <container> bash"
   echo "if [ \"\$(id -u)\" = \"0\" ] && [ -t 0 ]; then exec su - $CUSER; fi" >> /root/.bashrc
 '
+
+# --- Run execute_with_source.sh as worker inside container ---
+docker exec -u "$CONTAINER_USER" "$container_name" bash -c 'cd /shared && source ./execute_with_source.sh'
 
 # --- Output ---
 echo ""
 echo "Launched container: $container_name"
 echo "  docker exec -it $container_name bash  (auto-switches to ${CONTAINER_USER})"
-echo "  Claude Code: claude --dangerously-skip-permissions"

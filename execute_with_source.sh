@@ -130,15 +130,16 @@ echo "backup: ${BASHRC_FILE}.bak_ps1_..."
 sed -i '/^if \[ "\$color_prompt" = yes \]; then$/,/^fi$/{ /^if \[ "\$color_prompt" = yes \]; then$/d; /^else$/d; /^fi$/d; }' "$BASHRC_FILE"
 
 # --- jhkim-config 섹션 관리 ---
-if grep -q "### jhkim-config ps1 start" "$BASHRC_FILE"; then
-    echo "Removing existing jhkim-config ps1 section..."
-    sed -i '/### jhkim-config ps1 start/,/### jhkim-config ps1 end/d' "$BASHRC_FILE"
+if grep -q "### jhkim-config start" "$BASHRC_FILE"; then
+    echo "Removing existing jhkim-config section..."
+    sed -i '/### jhkim-config start/,/### jhkim-config end/d' "$BASHRC_FILE"
 fi
 
 echo "" >> "$BASHRC_FILE"
-echo "### jhkim-config ps1 start" >> "$BASHRC_FILE"
+echo "### jhkim-config start" >> "$BASHRC_FILE"
 echo 'export PS1="\[\033[38;5;135m\][\A] \W\$\[\033[0m\] "' >> "$BASHRC_FILE"
-echo "### jhkim-config ps1 end" >> "$BASHRC_FILE"
+echo "alias claude='claude --dangerously-skip-permissions'" >> "$BASHRC_FILE"
+echo "### jhkim-config end" >> "$BASHRC_FILE"
 
 echo ""
 source ~/.bashrc
