@@ -70,6 +70,20 @@ vim.keymap.set('v', 'a', '<Esc>i', { noremap = true, silent = true })
 -- Lazy.nvim 방식에서는 보통 plugins/ 폴더 내에서 config() 함수로 처리하는 것이 깔끔합니다.
 -- 하지만 기존 구조를 유지하기 위해 아래 require를 유지하되, 내용은 Lazy spec에 맞게 수정했습니다.
 
+-- 5. 한글 입력 자동 전환 (Normal 모드 진입 시 영문으로 자동 전환)
+vim.api.nvim_create_autocmd("InsertLeave", {
+    callback = function()
+        local handle = io.popen("ibus engine 2>/dev/null")
+        if handle then
+            local result = handle:read("*a")
+            handle:close()
+            if result and result:match("hangul") then
+                os.execute("ibus engine xkb:us::eng")
+            end
+        end
+    end,
+})
+
 -- 키 입력 타이밍 설정 (방향키 딜레이 해결)
 opt.timeoutlen = 300        -- 매핑 완성을 기다리는 시간 (ms) - 500에서 300으로 단축
 opt.ttimeoutlen = 0         -- 터미널 시퀀스 타이밍 (즉시 처리!) - 0ms로 설정하여 딜레이 완전 제거
