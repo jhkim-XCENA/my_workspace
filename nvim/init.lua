@@ -82,6 +82,23 @@ vim.keymap.set('v', 'a', '<Esc>i', { noremap = true, silent = true })
 -- Lazy.nvim 방식에서는 보통 plugins/ 폴더 내에서 config() 함수로 처리하는 것이 깔끔합니다.
 -- 하지만 기존 구조를 유지하기 위해 아래 require를 유지하되, 내용은 Lazy spec에 맞게 수정했습니다.
 
+-- 5. 모드별 배경색 변경 (Insert = 차가운 톤)
+local normal_bg = "#1e1e1e"
+local insert_bg = "#1a1e22"
+
+vim.api.nvim_create_autocmd("ModeChanged", {
+    pattern = "*:i*",
+    callback = function()
+        vim.api.nvim_set_hl(0, "Normal", { bg = insert_bg })
+    end,
+})
+vim.api.nvim_create_autocmd("ModeChanged", {
+    pattern = "i*:*",
+    callback = function()
+        vim.api.nvim_set_hl(0, "Normal", { bg = normal_bg })
+    end,
+})
+
 -- 키 입력 타이밍 설정 (방향키 딜레이 해결)
 opt.timeoutlen = 300        -- 매핑 완성을 기다리는 시간 (ms) - 500에서 300으로 단축
 opt.ttimeoutlen = 0         -- 터미널 시퀀스 타이밍 (즉시 처리!) - 0ms로 설정하여 딜레이 완전 제거
