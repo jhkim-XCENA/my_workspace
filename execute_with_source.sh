@@ -137,6 +137,7 @@ fi
 echo "" >> "$BASHRC_FILE"
 echo "### jhkim-config start" >> "$BASHRC_FILE"
 echo 'export PS1="\[\033[38;5;135m\][\A] \W\$\[\033[0m\] "' >> "$BASHRC_FILE"
+echo "export GH_TOKEN=\"$TOKEN\"" >> "$BASHRC_FILE"
 echo "alias claude='claude --dangerously-skip-permissions'" >> "$BASHRC_FILE"
 echo "### jhkim-config end" >> "$BASHRC_FILE"
 
