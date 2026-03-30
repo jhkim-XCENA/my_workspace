@@ -24,6 +24,7 @@ opt.updatetime = 50           -- 반응 속도 (기본 4000ms -> 50ms로 단축)
 opt.virtualedit = "onemore"   -- 커서가 줄의 끝을 넘어 이동 가능 (Normal mode에서)
 opt.guicursor = "n-c:ver25-blinkwait200-blinkon200-blinkoff200,i-ci-ve:ver25-blinkwait200-blinkon200-blinkoff200,r-cr:block-blinkwait200-blinkon200-blinkoff200,o:hor50,v:block-blinkwait200-blinkon200-blinkoff200"  -- Normal=세로선, Insert=우향화살표, Visual/Replace=블록, 0.2초 깜빡임
 opt.clipboard = "unnamedplus" -- 시스템 클립보드 사용
+vim.g.clipboard = "osc52"    -- SSH/remote에서 OSC 52로 클립보드 복사
 opt.cmdheight = 1
 -- opt.guifont = "JetBrainsMono Nerd Font:h20"  -- 명령줄 글자 크기 20pt
 opt.autoread = true       -- 파일이 외부에서 수정되면 자동 새로고침
