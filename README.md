@@ -1,58 +1,68 @@
-# 설치
-```bash
-source ./setup.sh
-```
+# my_workspace
 
-# Neovim Configuration (v0.11+)
-
-현대적인 Neovim 설정 with LSP, Treesitter
+개발 환경 설정 (Neovim, Docker, Claude Code)
 
 ## 설치
 
+### 호스트 환경 (직접 설치)
 ```bash
-cd nvim
-chmod +x install.sh
-./install.sh
+source ./execute_with_source.sh
 ```
 
-설치 후 `nvim`을 실행하면 Lazy.nvim이 자동으로 플러그인을 설치합니다.
+### Docker 환경
+```bash
+# 사전 점검
+./check_docker_env.sh
 
-## 에디터 핵심 단축키 (Vim 기본 및 플러그인)
+# 컨테이너 생성 및 실행
+./launch_docker_container.sh
+```
 
-| 단축키 | 기능 | 설명 | 비고 |
-| :--- | :--- | :--- | :--- |
-| **`Ctrl` + `n`** | 파일 탐색기 토글 | Nvim-Tree 파일 탐색기 창을 열거나 닫습니다. | `nvim-tree.lua` |
-| **`<Space>ff`** | 파일 찾기 | Telescope로 파일 검색 | `Telescope` |
-| **`<Space>fg`** | 텍스트 검색 | ripgrep으로 전체 검색 | `Telescope` |
-| **`<Space>fb`** | 버퍼 목록 | 열린 파일 목록 표시 | `Telescope` |
-| **`Ctrl` + `o`** | 뒤로 가기 (Go Back) | `gd`, `gr` 등으로 이동했던 **이전 위치**로 되돌아갑니다. | Vim Jump List |
-| **`Ctrl` + `i`** | 앞으로 가기 (Go Forward) | `Ctrl` + `o`로 되돌아온 후 **다음 위치**로 이동합니다. | Vim Jump List |
-| **`<Tab>` / `<S-Tab>`** | 자동완성/스니펫 이동 | 자동완성 목록에서 이동하거나, 스니펫 내부에서 점프합니다. | `nvim-cmp`, `LuaSnip` |
-| **`<C-Space>`** | 자동완성 호출 | 언제든 강제로 자동완성 목록을 띄웁니다. | `nvim-cmp` |
+컨테이너 내부에서 `execute_with_source.sh`가 자동 실행되어 nvim, glow 등이 설치됩니다.
 
-## LSP 코드 내비게이션 및 기능
+---
 
-(LSP 서버가 로드된 상태에서 작동하며, C/C++ 파일에서 주로 사용됩니다.)
+# Neovim Configuration (v0.11+)
 
-| 단축키 | 기능 | 설명 |
+## 에디터 핵심 단축키
+
+| 단축키 | 기능 | 비고 |
 | :--- | :--- | :--- |
-| **`K`** | 키워드 정보 (Hover) | 커서가 위치한 함수, 변수, 키워드의 **타입 정보나 문서(Doc)**를 팝업으로 띄웁니다. |
-| **`gd`** | Go to Definition | 커서가 위치한 토큰의 **정의(구현부)**로 이동합니다. (가장 많이 씀) |
-| **`gD`** | Go to Declaration | 커서가 위치한 토큰의 **선언부(헤더 파일)**로 이동합니다. |
-| **`gi`** | Go to Implementation | 인터페이스나 가상 함수의 실제 **구현부**로 이동합니다. |
-| **`gr`** | Go to References | 현재 토큰이 **사용된 모든 곳**을 찾아서 목록으로 보여줍니다. |
-| **`<Space>` + `rn`** | Rename (일괄 이름 변경) | 변수나 함수 이름을 프로젝트 전체에 걸쳐 **일괄적으로 변경**합니다. |
-| **`<Space>` + `ca`** | Code Action (퀵 픽스) | 퀵 픽스 메뉴를 엽니다. (예: 누락된 헤더 추가, 코드 구조 변경 등) |
-| **`<Space>` + `f`** | Format | 현재 파일의 코드를 **자동 정렬(포맷팅)** 합니다. |
-| **`[d` / `]d`** | 다음/이전 진단 | LSP가 찾은 에러(`Error`)나 경고(`Warning`) 사이를 이동합니다. |
+| **`Ctrl+n`** | 파일 탐색기 토글 | nvim-tree |
+| **`<Space>ff`** | 파일 찾기 | Telescope |
+| **`<Space>fg`** | 텍스트 검색 (ripgrep) | Telescope |
+| **`<Space>fb`** | 버퍼 목록 | Telescope |
+| **`Ctrl+o`** | 이전 위치로 이동 | Jump List |
+| **`Ctrl+i`** | 다음 위치로 이동 | Jump List |
+| **`<Tab>` / `<S-Tab>`** | 자동완성 목록 이동 | nvim-cmp |
+| **`<C-Space>`** | 자동완성 강제 호출 | nvim-cmp |
+| **`gcc`** | 현재 줄 주석 토글 | Comment.nvim |
+| **`gc`** (Visual) | 선택 영역 주석 토글 | Comment.nvim |
+| **`Esc`** | 검색 하이라이트 해제 | |
 
-## 추가 기능 (vim-illuminate)
+## LSP 단축키
 
-| 단축키 | 기능 | 설명 |
-| :--- | :--- | :--- |
-| **커서 이동** | 커서 단어 하이라이트 | 커서를 단어(키워드 포함) 위에 올리면, **문서 내의 동일한 모든 단어**를 강조 표시합니다. |
-| **`<Alt>` + `n`** | 다음 강조 단어로 이동 | 하이라이트 된 **다음** 단어 위치로 이동합니다. |
-| **`<Alt>` + `p`** | 이전 강조 단어로 이동 | 하이라이트 된 **이전** 단어 위치로 이동합니다. |
+| 단축키 | 기능 |
+| :--- | :--- |
+| **`K`** | Hover (타입 정보/문서) |
+| **`gd`** | Go to Definition |
+| **`gD`** | Go to Declaration |
+| **`gi`** | Go to Implementation |
+| **`gr`** | Go to References |
+| **`gl`** | 에러 메시지 팝업 |
+| **`<Space>rn`** | Rename (일괄 이름 변경) |
+| **`<Space>ca`** | Code Action (퀵 픽스) |
+| **`[d` / `]d`** | 다음/이전 진단 이동 |
+
+## 추가 기능
+
+| 기능 | 설명 |
+| :--- | :--- |
+| **커서 단어 하이라이트** | 동일 단어 자동 강조 (vim-illuminate) |
+| **괄호 자동 완성** | `(` 입력 시 `)` 자동 생성 (nvim-autopairs) |
+| **Git 변경 표시** | sign column에 +/-/~ 표시 (gitsigns) |
+| **모드별 배경색** | Insert 모드에서 배경이 차가운 톤으로 변경 |
+| **한글 langmap** | 한글 입력 상태에서도 Normal 모드 명령 동작 (SSH/remote 호환) |
 
 ---
 
@@ -60,51 +70,50 @@ chmod +x install.sh
 
 ```
 my_workspace/
-├── execute_with_source.sh    # 전체 환경 설정 (source로 실행)
+├── execute_with_source.sh       # 전체 환경 설정 (source로 실행)
+├── launch_docker_container.sh   # Docker 컨테이너 생성/실행
+├── check_docker_env.sh          # Docker 사전 환경 점검
+├── token.txt                    # GitHub token (git-ignored)
 ├── nvim/
-│   ├── init.lua              # 메인 설정 파일
-│   ├── install.sh            # Neovim 설치 스크립트
-│   ├── keyremap.lua          # 키 리매핑 설정
+│   ├── init.lua                 # 메인 설정 파일
+│   ├── install.sh               # Neovim 설치 스크립트
+│   ├── keyremap.lua             # 키 리매핑 설정
 │   ├── lua/
 │   │   ├── plugins/
-│   │   │   └── init.lua     # 기본 플러그인 (Treesitter, LSP, Telescope 등)
+│   │   │   └── init.lua        # 플러그인 설정
 │   │   └── lsp/
-│   │       └── lspconfig.lua # LSP 서버 설정 (clangd, rust_analyzer, lua_ls)
+│   │       └── lspconfig.lua   # LSP 서버 설정
 ```
 
 ## 포함된 기능
 
 - **Color Scheme**: OneDark Darker
 - **File Explorer**: nvim-tree
-- **Status Line**: lualine (IME 상태 표시 포함)
+- **Status Line**: lualine
 - **Syntax Highlight**: Treesitter
 - **LSP**: Native Neovim 0.11+ API
   - C/C++ (clangd)
   - Rust (rust_analyzer)
   - Lua (lua_ls)
+  - Bash (bash-language-server)
 - **Fuzzy Finder**: Telescope
 - **Auto Completion**: nvim-cmp
 - **Word Highlight**: vim-illuminate
+- **Auto Pairs**: nvim-autopairs
+- **Git Signs**: gitsigns
+- **Comment Toggle**: Comment.nvim
 
-## 파일 목록 (참고)
-
-| 파일 | 역할 |
-| :--- | :--- |
-| `init.lua` | 메인 진입점. 기본 설정 및 Lazy.nvim 로드 |
-| `install.sh` | 환경 설정, Neovim 바이너리 설치 및 의존성 설치 스크립트 |
-| `lua/plugins/init.lua` | 기본 플러그인 명세 (LSP, Treesitter, Nvim-Tree 등) |
-| `lua/lsp/lspconfig.lua` | **`vim.lsp.config` 기반**의 LSP 서버별 상세 설정 및 키매핑 정의 |
-
+---
 
 # Windows Terminal 단축키
 
 ## 창 분할
-- alt + shift + - : 수평 분할
-- alt + shift + + : 수직 분할
+- `Alt+Shift+-` : 수평 분할
+- `Alt+Shift++` : 수직 분할
 
-## 창 간 이동:
-- alt + 방향키: 해당 방향의 창으로 이동
+## 창 간 이동
+- `Alt+방향키` : 해당 방향의 창으로 이동
 
 ## 기타
-- ctrl + shift + W: 현재 창 닫기
-- alt + shift + W: 모든 창 닫기
+- `Ctrl+Shift+W` : 현재 창 닫기
+- `Alt+Shift+W` : 모든 창 닫기
