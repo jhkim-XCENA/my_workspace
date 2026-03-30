@@ -101,11 +101,13 @@ docker exec "$container_name" bash -c '
       || useradd -m -s /bin/bash -o -u "$HOST_UID" "$CUSER"
   fi
 
-  # Ensure .bashrc exists (useradd skips skel if home already exists)
-  if [ ! -f /home/"$CUSER"/.bashrc ]; then
-    cp /etc/skel/.bashrc /home/"$CUSER"/.bashrc 2>/dev/null \
-      || touch /home/"$CUSER"/.bashrc
-  fi
+  # Ensure .bashrc and .profile exist (useradd skips skel if home already exists)
+  for f in .bashrc .profile; do
+    if [ ! -f /home/"$CUSER"/$f ]; then
+      cp /etc/skel/$f /home/"$CUSER"/$f 2>/dev/null \
+        || touch /home/"$CUSER"/$f
+    fi
+  done
 
   # Install essential tools (curl, sudo) before user setup runs
   apt-get update -qq
