@@ -12,15 +12,82 @@ CLAUDE_BINARY="$CLAUDE_VERSIONS_DIR/$(ls -v "$CLAUDE_VERSIONS_DIR" 2>/dev/null |
 CLAUDE_CONFIG_DIR="$HOME/.claude"
 CONTAINER_USER="worker"
 
-# --- Read GitHub token (for gh CLI and git clone) ---
-TOKEN="$(cat "$SCRIPT_PATH/token.txt" 2>/dev/null | tr -d '[:space:]')"
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+NC='\033[0m'
 
-if [ -z "$TOKEN" ]; then
-    echo "Error: token.txt is empty. Please fill in your GitHub token into ${SCRIPT_PATH}/token.txt"
-    exit 1
+# ============================================================
+# Preflight check
+# ============================================================
+ERRORS=0
+pass() { echo -e "  ${GREEN}✔${NC} $1"; }
+fail() { echo -e "  ${RED}✘${NC} $1"; ERRORS=$((ERRORS + 1)); }
+warn() { echo -e "  ${YELLOW}!${NC} $1"; }
+
+echo "=== Preflight check ==="
+echo ""
+
+# --- 1. Files & directories ---
+echo "[1] 호스트 파일 및 디렉토리"
+
+REQUIRED_DIRS=("$HOME/.ssh" "$CLAUDE_CONFIG_DIR")
+REQUIRED_FILES=(
+    "$HOME/.gitconfig"
+    "$CLAUDE_BINARY"
+    "$CLAUDE_CONFIG_DIR/.credentials.json"
+    "$HOME/.claude.json"
+    "$SCRIPT_PATH/token.txt"
+)
+
+for dir in "${REQUIRED_DIRS[@]}"; do
+    if [ -d "$dir" ]; then pass "$dir"; else fail "$dir 디렉토리 없음"; fi
+done
+for file in "${REQUIRED_FILES[@]}"; do
+    if [ -e "$file" ]; then pass "$file"; else fail "$file 파일 없음"; fi
+done
+
+TOKEN="$(cat "$SCRIPT_PATH/token.txt" 2>/dev/null | tr -d '[:space:]')"
+if [ -n "$TOKEN" ]; then
+    pass "token.txt 내용 있음"
+else
+    fail "token.txt 파일이 없거나 비어있음"
 fi
 
-# --- Prepare directories ---
+echo ""
+
+# --- 2. Docker ---
+echo "[2] Docker"
+
+if command -v docker &>/dev/null; then pass "docker 명령어 존재"; else fail "docker가 설치되지 않음"; fi
+if docker info &>/dev/null 2>&1; then pass "docker 데몬 실행 중"; else fail "docker 데몬에 접근 불가"; fi
+
+if docker image inspect "$image_name" &>/dev/null 2>&1; then
+    pass "이미지 로컬에 존재"
+else
+    warn "이미지 로컬에 없음 (pull 시도)"
+    if docker pull "$image_name" >> "$SETUP_LOG" 2>&1; then
+        pass "이미지 pull 성공"
+    else
+        fail "이미지 pull 실패: $image_name"
+    fi
+fi
+
+if [ -e /dev/kvm ]; then pass "/dev/kvm 존재"; else fail "/dev/kvm 없음"; fi
+
+echo ""
+
+# --- Preflight result ---
+if [ "$ERRORS" -ne 0 ]; then
+    echo -e "${RED}${ERRORS}개 항목 미충족. 위 내용을 확인하세요.${NC}"
+    exit 1
+fi
+echo -e "${GREEN}Preflight 통과${NC}"
+echo ""
+
+# ============================================================
+# Prepare directories
+# ============================================================
 parent_dir="$(dirname "$mount_dir")"
 
 clone_if_missing() {
@@ -43,17 +110,9 @@ git -C "$parent_dir/sdk_release" submodule update --init tools/pxcc >> "$SETUP_L
 
 echo "$mount_dir will be used as workspace root"
 
-# --- Validate Claude Code ---
-if [ ! -f "$CLAUDE_BINARY" ]; then
-    echo "Claude Code binary not found: $CLAUDE_BINARY"
-    exit 1
-fi
-if [ ! -f "$CLAUDE_CONFIG_DIR/.credentials.json" ]; then
-    echo "Claude Code credentials not found: $CLAUDE_CONFIG_DIR/.credentials.json"
-    exit 1
-fi
-
-# --- Generate container name: jhkim{yymmdd} ---
+# ============================================================
+# Generate container name
+# ============================================================
 date_str=$(date +%y%m%d)
 container_name="jhkim${date_str}"
 if [ "$(docker ps -a -q -f name="^/${container_name}$")" ]; then
@@ -64,7 +123,9 @@ if [ "$(docker ps -a -q -f name="^/${container_name}$")" ]; then
     container_name="${container_name}_${suffix}"
 fi
 
-# --- Launch container ---
+# ============================================================
+# Launch container
+# ============================================================
 echo "Launching container: $container_name ..."
 docker run -dit \
   --name "$container_name" \
@@ -93,7 +154,9 @@ docker cp "$parent_dir/sdk_release" "$container_name":/sdk_release >> "$SETUP_LO
 echo "Copying llvm-project into container ..."
 docker cp "$parent_dir/llvm-project" "$container_name":/llvm-project >> "$SETUP_LOG" 2>&1
 
-# --- Post-launch: create worker user and bootstrap ---
+# ============================================================
+# Post-launch: create worker user and bootstrap
+# ============================================================
 echo "Setting up $CONTAINER_USER user ..."
 docker exec "$container_name" bash -c '
   CUSER="worker"
@@ -134,7 +197,9 @@ docker exec "$container_name" bash -c '
 echo "Running environment setup inside container ..."
 docker exec -u "$CONTAINER_USER" "$container_name" bash -c 'cd /shared && source ./execute_with_source.sh'
 
-# --- Output ---
+# ============================================================
+# Output
+# ============================================================
 echo ""
 echo "Launched container: $container_name"
 echo "  Detail log: $SETUP_LOG"

@@ -11,12 +11,9 @@ source ./execute_with_source.sh
 
 ### Docker 환경
 ```bash
-# 사전 점검
-./check_docker_env.sh
-
-# 컨테이너 생성 및 실행
 ./launch_docker_container.sh
 ```
+실행 시 preflight check → 리포 clone → 컨테이너 생성 → 환경 설치가 자동으로 진행됩니다.
 
 컨테이너 내부에서 `execute_with_source.sh`가 자동 실행되어 nvim, glow 등이 설치됩니다.
 
@@ -71,8 +68,7 @@ source ./execute_with_source.sh
 ```
 my_workspace/
 ├── execute_with_source.sh       # 전체 환경 설정 (source로 실행)
-├── launch_docker_container.sh   # Docker 컨테이너 생성/실행
-├── check_docker_env.sh          # Docker 사전 환경 점검
+├── launch_docker_container.sh   # Docker 환경 점검 + 컨테이너 생성/실행
 ├── token.txt                    # GitHub token (git-ignored)
 ├── nvim/
 │   ├── init.lua                 # 메인 설정 파일
