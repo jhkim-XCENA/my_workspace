@@ -78,6 +78,14 @@ install_glow() {
     $SUDO apt install -y glow
 }
 
+install_gh() {
+    $SUDO mkdir -p /etc/apt/keyrings
+    curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | $SUDO tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | $SUDO tee /etc/apt/sources.list.d/github-cli-stable.list > /dev/null
+    $SUDO apt update -qq
+    $SUDO apt install -y gh
+}
+
 # --- Main ---
 log "=== Environment Setup (detail: $SETUP_LOG) ==="
 
@@ -87,6 +95,7 @@ $SUDO apt update -qq >> "$SETUP_LOG" 2>&1
 ensure_pkg curl
 ensure_cmd node 22 install_node
 ensure_cmd glow 0 install_glow
+ensure_cmd gh 2 install_gh
 
 log ""
 log "Script directory: $SCRIPT_DIR"
