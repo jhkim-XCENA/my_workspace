@@ -137,5 +137,9 @@ docker exec -u "$CONTAINER_USER" "$container_name" bash -c 'cd /shared && source
 # --- Output ---
 echo ""
 echo "Launched container: $container_name"
-echo "  docker exec -it $container_name bash"
 echo "  Detail log: $SETUP_LOG"
+echo ""
+echo ""
+echo "  docker exec -it $container_name bash"
+echo ""
+echo ""

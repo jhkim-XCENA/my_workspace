@@ -7,6 +7,7 @@ YELLOW='\033[0;33m'
 NC='\033[0m'
 
 ERRORS=0
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 pass() { echo -e "  ${GREEN}✔${NC} $1"; }
 fail() { echo -e "  ${RED}✘${NC} $1"; ERRORS=$((ERRORS + 1)); }
@@ -20,6 +21,7 @@ echo "[1] 호스트 파일 및 디렉토리"
 
 REQUIRED_DIRS=(
     "$HOME/.ssh"
+    "$HOME/.claude"
 )
 
 CLAUDE_VERSIONS_DIR="$HOME/.local/share/claude/versions"
@@ -29,7 +31,8 @@ REQUIRED_FILES=(
     "$HOME/.gitconfig"
     "$CLAUDE_BINARY"
     "$HOME/.claude/.credentials.json"
-    "$HOME/.claude/settings.json"
+    "$HOME/.claude.json"
+    "$SCRIPT_DIR/token.txt"
 )
 
 for dir in "${REQUIRED_DIRS[@]}"; do
@@ -48,21 +51,20 @@ for file in "${REQUIRED_FILES[@]}"; do
     fi
 done
 
-echo ""
-
-# 2. 환경변수
-echo "[2] 환경변수"
-
-if [ -n "${GITHUB_TOKEN:-}" ]; then
-    pass "GITHUB_TOKEN 설정됨"
-else
-    fail "GITHUB_TOKEN 미설정 (export GITHUB_TOKEN=... 필요)"
+# token.txt 내용 확인
+if [ -e "$SCRIPT_DIR/token.txt" ]; then
+    TOKEN="$(cat "$SCRIPT_DIR/token.txt" 2>/dev/null | tr -d '[:space:]')"
+    if [ -n "$TOKEN" ]; then
+        pass "token.txt 내용 있음"
+    else
+        fail "token.txt 파일은 있으나 비어있음"
+    fi
 fi
 
 echo ""
 
-# 3. Docker
-echo "[3] Docker"
+# 2. Docker
+echo "[2] Docker"
 
 if command -v docker &>/dev/null; then
     pass "docker 명령어 존재"
@@ -96,26 +98,10 @@ fi
 
 echo ""
 
-# 4. VS Code Dev Containers 확장
-echo "[4] VS Code 확장"
-
-if command -v code &>/dev/null; then
-    pass "code 명령어 존재"
-    if code --list-extensions 2>/dev/null | grep -qi "ms-vscode-remote.remote-containers"; then
-        pass "Dev Containers 확장 설치됨"
-    else
-        fail "Dev Containers 확장 미설치 (code --install-extension ms-vscode-remote.remote-containers)"
-    fi
-else
-    warn "code 명령어 없음 (VS Code CLI 미설치 — VS Code 내에서 직접 확인 필요)"
-fi
-
-echo ""
-
 # 결과 요약
 echo "=== 점검 완료 ==="
 if [ "$ERRORS" -eq 0 ]; then
-    echo -e "${GREEN}모든 항목 통과. VS Code에서 'Dev Containers: Reopen in Container'를 실행하세요.${NC}"
+    echo -e "${GREEN}모든 항목 통과. ./launch_docker_container.sh 로 컨테이너를 실행하세요.${NC}"
 else
     echo -e "${RED}${ERRORS}개 항목 미충족. 위 내용을 확인하세요.${NC}"
     exit 1
