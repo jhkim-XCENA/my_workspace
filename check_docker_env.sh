@@ -20,7 +20,6 @@ echo "[1] 호스트 파일 및 디렉토리"
 
 REQUIRED_DIRS=(
     "$HOME/.ssh"
-    "$HOME/.config/github-copilot"
 )
 
 REQUIRED_FILES=(

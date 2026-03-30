@@ -24,14 +24,14 @@ if ! command -v clangd &> /dev/null; then
     REQUIRED_PACKAGES+=" clangd"
 fi
 
-# Node.js 확인 (Copilot 구동에 필수 - v22 이상 필요)
+# Node.js 확인 (v22 이상 필요)
 NODE_VERSION=""
 if command -v node &> /dev/null; then
     NODE_VERSION=$(node -v | grep -oP 'v\K[0-9]+')
 fi
 
 if [ -z "$NODE_VERSION" ] || [ "$NODE_VERSION" -lt 22 ]; then
-    echo -e "${YELLOW}Node.js v22+ required for Copilot. Installing Node.js v22.x...${NC}"
+    echo -e "${YELLOW}Node.js v22+ required. Installing Node.js v22.x...${NC}"
     if [ -n "$SUDO" ]; then
         curl -fsSL https://deb.nodesource.com/setup_22.x | $SUDO -E bash -
     else

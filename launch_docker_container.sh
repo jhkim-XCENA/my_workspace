@@ -28,7 +28,7 @@ if [ ! -f "$CLAUDE_CONFIG_DIR/.credentials.json" ]; then
     exit 1
 fi
 
-# --- Read GitHub token (for GitHub Copilot CLI) ---
+# --- Read GitHub token (for gh CLI) ---
 SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TOKEN="$(cat "$SCRIPT_PATH/token.txt" 2>/dev/null | tr -d '[:space:]')"
 
@@ -57,7 +57,6 @@ docker run -dit \
   -v "$mount_dir/llvm-project:/llvm-project" \
   -v "$HOME/.gitconfig:/home/${CONTAINER_USER}/.gitconfig:ro" \
   -v "$HOME/.ssh:/home/${CONTAINER_USER}/.ssh:ro" \
-  -v "$HOME/.config/github-copilot:/home/${CONTAINER_USER}/.config/github-copilot" \
   -v "${CLAUDE_BINARY}:/usr/local/bin/claude:ro" \
   -v "${CLAUDE_CONFIG_DIR}/.credentials.json:/home/${CONTAINER_USER}/.claude/.credentials.json" \
   -v "${CLAUDE_CONFIG_DIR}/settings.json:/home/${CONTAINER_USER}/.claude/settings.json" \

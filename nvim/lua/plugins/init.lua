@@ -1,5 +1,5 @@
 -- lua/plugins/init.lua
--- 기본 플러그인 설정 (Copilot 제외)
+-- 기본 플러그인 설정
 
 return {
     -- 1. Color Scheme (OneDark Darker)
@@ -35,31 +35,8 @@ return {
         "nvim-lualine/lualine.nvim",
         dependencies = { "nvim-tree/nvim-web-devicons" },
         config = function()
-            -- IME 상태 감지 함수 (캐시 추가로 성능 개선)
-            local ime_status_cache = { value = "🇺🇸 EN", timestamp = 0 }
-            local function get_ime_status()
-                local current_time = vim.loop.hrtime() / 1000000 -- ms로 변환
-                -- 1초 이내면 캐시된 값 반환 (빈번한 프로세스 실행 방지)
-                if current_time - ime_status_cache.timestamp < 1000 then
-                    return ime_status_cache.value
-                end
-                
-                local handle = io.popen("ibus engine 2>/dev/null")
-                if handle then
-                    local result = handle:read("*a")
-                    handle:close()
-                    if result and result:match("hangul") then
-                        ime_status_cache.value = "🇰🇷 한글"
-                    else
-                        ime_status_cache.value = "🇺🇸 EN"
-                    end
-                    ime_status_cache.timestamp = current_time
-                end
-                return ime_status_cache.value
-            end
-
             require('lualine').setup({
-                options = { 
+                options = {
                     theme = "onedark",
                     component_separators = { left = '|', right = '|'},
                 },
@@ -67,19 +44,10 @@ return {
                     lualine_a = {'mode'},
                     lualine_b = {'branch', 'diff', 'diagnostics'},
                     lualine_c = {'filename'},
-                    lualine_x = {
-                        get_ime_status,  -- IME 상태 표시
-                        'encoding', 
-                        'fileformat', 
-                        'filetype'
-                    },
+                    lualine_x = {'encoding', 'fileformat', 'filetype'},
                     lualine_y = {'progress'},
                     lualine_z = {'location'}
                 },
-                -- 업데이트 주기 조정 (IME 상태 반영을 위한 최적화)
-                refresh = {
-                    statusline = 500,  -- 500ms마다 업데이트 (200에서 증가, CPU 부하 감소)
-                }
             })
         end,
     },
@@ -210,30 +178,13 @@ return {
                         end
                     end, { "i", "s" }),
                 }),
-                -- Copilot을 포함한 추천 소스 우선순위
                 sources = cmp.config.sources({
-                    { name = "copilot", group_index = 2 },  -- Copilot (최우선)
                     { name = "nvim_lsp", group_index = 2 }, -- LSP
                     { name = "luasnip", group_index = 2 },  -- 스니펫
                 }, {
                     { name = "buffer" },   -- 버퍼 내 단어
                     { name = "path" },     -- 파일 경로
                 }),
-                -- Copilot 아이콘 추가
-                formatting = {
-                    format = function(entry, vim_item)
-                        -- 소스별 아이콘 표시
-                        local icons = {
-                            copilot = "",
-                            nvim_lsp = "",
-                            luasnip = "",
-                            buffer = "﬘",
-                            path = "",
-                        }
-                        vim_item.kind = string.format('%s %s', icons[entry.source.name] or '', vim_item.kind)
-                        return vim_item
-                    end
-                },
             })
         end,
     },

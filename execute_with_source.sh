@@ -20,9 +20,6 @@ if ! command -v node &> /dev/null || [ "$(node -v | grep -oP 'v\K[0-9]+')" -lt 2
     $SUDO apt install -y nodejs
 fi
 
-# copilot cli 설치
-npm install -g @github/copilot
-
 # install glow
 $SUDO mkdir -p /etc/apt/keyrings
 curl -fsSL https://repo.charm.sh/apt/gpg.key | $SUDO gpg --dearmor -o /etc/apt/keyrings/charm.gpg
