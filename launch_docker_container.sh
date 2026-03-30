@@ -5,17 +5,34 @@ set -euo pipefail
 SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 mount_dir="$SCRIPT_PATH"
 image_name="192.168.57.60:8008/sdk_release/sdk_release:latest"
-CLAUDE_BINARY="$HOME/.local/share/claude/versions/2.1.72"
+CLAUDE_VERSIONS_DIR="$HOME/.local/share/claude/versions"
+CLAUDE_BINARY="$CLAUDE_VERSIONS_DIR/$(ls -v "$CLAUDE_VERSIONS_DIR" 2>/dev/null | tail -1)"
 CLAUDE_CONFIG_DIR="$HOME/.claude"
 CONTAINER_USER="jhkim"
 
-# --- Validate directories ---
-for dir in "$mount_dir/shared" "$mount_dir/sdk_release" "$mount_dir/llvm-project"; do
+# --- Read GitHub token (for gh CLI and git clone) ---
+TOKEN="$(cat "$SCRIPT_PATH/token.txt" 2>/dev/null | tr -d '[:space:]')"
+
+if [ -z "$TOKEN" ]; then
+    echo "Error: token.txt is empty. Please fill in your GitHub token into ${SCRIPT_PATH}/token.txt"
+    exit 1
+fi
+
+# --- Prepare directories ---
+parent_dir="$(dirname "$mount_dir")"
+
+clone_if_missing() {
+    local dir="$1"
+    local repo="$2"
     if [ ! -d "$dir" ]; then
-        echo "$dir does not exist"
-        exit 1
+        echo "Cloning $repo into $dir ..."
+        git clone "https://x-access-token:${TOKEN}@github.com/${repo}.git" "$dir"
     fi
-done
+}
+
+clone_if_missing "$parent_dir/sdk_release"   "xcena-dev/sdk_release"
+clone_if_missing "$parent_dir/llvm-project"  "xcena-dev/llvm-project-fork"
+
 echo "$mount_dir will be used as workspace root"
 
 # --- Validate Claude Code ---
@@ -25,15 +42,6 @@ if [ ! -f "$CLAUDE_BINARY" ]; then
 fi
 if [ ! -f "$CLAUDE_CONFIG_DIR/.credentials.json" ]; then
     echo "Claude Code credentials not found: $CLAUDE_CONFIG_DIR/.credentials.json"
-    exit 1
-fi
-
-# --- Read GitHub token (for gh CLI) ---
-SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TOKEN="$(cat "$SCRIPT_PATH/token.txt" 2>/dev/null | tr -d '[:space:]')"
-
-if [ -z "$TOKEN" ]; then
-    echo "Error: token.txt is empty. Please fill in your GitHub token into ${SCRIPT_PATH}/token.txt"
     exit 1
 fi
 
@@ -52,9 +60,9 @@ fi
 # --- Launch container ---
 docker run -dit \
   --name "$container_name" \
-  -v "$mount_dir/shared:/shared" \
-  -v "$mount_dir/sdk_release:/sdk_release" \
-  -v "$mount_dir/llvm-project:/llvm-project" \
+  -v "$mount_dir:/shared" \
+  -v "$parent_dir/sdk_release:/sdk_release" \
+  -v "$parent_dir/llvm-project:/llvm-project" \
   -v "$HOME/.gitconfig:/home/${CONTAINER_USER}/.gitconfig:ro" \
   -v "$HOME/.ssh:/home/${CONTAINER_USER}/.ssh:ro" \
   -v "${CLAUDE_BINARY}:/usr/local/bin/claude:ro" \

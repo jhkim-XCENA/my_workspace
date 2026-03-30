@@ -22,9 +22,12 @@ REQUIRED_DIRS=(
     "$HOME/.ssh"
 )
 
+CLAUDE_VERSIONS_DIR="$HOME/.local/share/claude/versions"
+CLAUDE_BINARY="$CLAUDE_VERSIONS_DIR/$(ls -v "$CLAUDE_VERSIONS_DIR" 2>/dev/null | tail -1)"
+
 REQUIRED_FILES=(
     "$HOME/.gitconfig"
-    "$HOME/.local/share/claude/versions/2.1.72"
+    "$CLAUDE_BINARY"
     "$HOME/.claude/.credentials.json"
     "$HOME/.claude/settings.json"
 )
