@@ -189,20 +189,26 @@ return {
         end,
     },
 
-    -- 9. Markdown Viewer (터미널에서 보기 좋게 렌더링)
+    -- 9. Markdown 편집 지원
     {
         "tadmccorkle/markdown.nvim",
         ft = { "markdown" },
-        opts = {
-            hooks = {
-                setloclist = function(buf)
-                    -- 마크다운 헤더를 location list에 표시
-                end,
-            },
-            on_attach = function(bufnr)
-                vim.keymap.set('n', '<leader>mp', ':MarkdownPreview<CR>', { buffer = bufnr, noremap = true, silent = true })
-            end,
-        },
+        opts = {},
+    },
+
+    -- 9-1. Markdown 버퍼 내 렌더링 (헤더/코드블록/테이블/체크박스 시각화)
+    {
+        "MeanderingProgrammer/render-markdown.nvim",
+        dependencies = { "nvim-treesitter/nvim-treesitter", "nvim-tree/nvim-web-devicons" },
+        ft = { "markdown" },
+        opts = {},
+    },
+
+    -- 9-2. Markdown 터미널 팝업 미리보기 (:Glow)
+    {
+        "ellisonleao/glow.nvim",
+        cmd = "Glow",
+        opts = {},
     },
 
     -- 10. 자동 괄호/따옴표 짝 맞추기
