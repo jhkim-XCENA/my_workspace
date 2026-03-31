@@ -232,6 +232,6 @@ return {
     -- 13. CSV Viewer (컬럼 정렬, 필터링, 테이블 보기)
     {
         "chrisbra/csv.vim",
-        ft = { "csv", "tsv" },
+        lazy = false,
     },
 }
