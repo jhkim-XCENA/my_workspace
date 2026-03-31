@@ -129,7 +129,7 @@ fi
 echo "Launching container: $container_name ..."
 docker run -dit \
   --name "$container_name" \
-  -v "$mount_dir:/shared" \
+  -v "$mount_dir:/home/${CONTAINER_USER}" \
   -v "$HOME/.gitconfig:/home/${CONTAINER_USER}/.gitconfig:ro" \
   -v "$HOME/.ssh:/home/${CONTAINER_USER}/.ssh:ro" \
   -v "${CLAUDE_BINARY}:/usr/local/bin/claude:ro" \
@@ -195,7 +195,7 @@ docker exec "$container_name" bash -c '
 
 # --- Run execute_with_source.sh as worker inside container ---
 echo "Running environment setup inside container ..."
-docker exec -u "$CONTAINER_USER" "$container_name" bash -c 'cd /shared && source ./execute_with_source.sh'
+docker exec -u "$CONTAINER_USER" "$container_name" bash -c 'cd ~ && source ./execute_with_source.sh'
 
 # ============================================================
 # Output
