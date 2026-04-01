@@ -204,13 +204,6 @@ return {
         opts = {},
     },
 
-    -- 9-2. Markdown 터미널 팝업 미리보기 (:Glow)
-    {
-        "ellisonleao/glow.nvim",
-        cmd = "Glow",
-        opts = {},
-    },
-
     -- 10. 자동 괄호/따옴표 짝 맞추기
     {
         "windwp/nvim-autopairs",
