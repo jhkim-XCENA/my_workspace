@@ -193,6 +193,23 @@ docker exec "$container_name" bash -c '
   echo "if [ \"\$(id -u)\" = \"0\" ] && [ -t 0 ]; then exec su - $CUSER; fi" >> /root/.bashrc
 ' >> "$SETUP_LOG" 2>&1
 
+# --- Switch git remotes to SSH inside container ---
+echo "Switching git remotes to SSH ..."
+docker exec -u "$CONTAINER_USER" "$container_name" bash -c '
+  for repo in /llvm-project /sdk_release /sdk_release/tools/pxcc; do
+    if [ -d "$repo/.git" ] || [ -f "$repo/.git" ]; then
+      url=$(git -C "$repo" remote get-url origin 2>/dev/null || true)
+      if [ -n "$url" ]; then
+        ssh_url=$(echo "$url" | sed -E "s|https://[^/]*github.com/|git@github.com:|")
+        if [ "$url" != "$ssh_url" ]; then
+          git -C "$repo" remote set-url origin "$ssh_url"
+          echo "  $repo: $ssh_url"
+        fi
+      fi
+    fi
+  done
+' >> "$SETUP_LOG" 2>&1
+
 # --- Run execute_with_source.sh as worker inside container ---
 echo "Running environment setup inside container ..."
 docker exec -u "$CONTAINER_USER" "$container_name" bash -c 'cd ~ && source ./execute_with_source.sh'
