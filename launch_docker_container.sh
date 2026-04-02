@@ -141,6 +141,7 @@ docker run -dit \
   -e GIT_COMMITTER_NAME="jhkim-XCENA" \
   -e GIT_COMMITTER_EMAIL="jeongho.kim@xcena.com" \
   -e GITHUB_TOKEN="$TOKEN" \
+  -e CONTAINER_NAME="$container_name" \
   -e USER="$CONTAINER_USER" \
   -e LANG=C.UTF-8 \
   -e LC_ALL=C.UTF-8 \

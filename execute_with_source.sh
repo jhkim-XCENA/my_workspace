@@ -136,7 +136,13 @@ fi
 
 echo "" >> "$BASHRC_FILE"
 echo "### jhkim-config start" >> "$BASHRC_FILE"
-echo 'export PS1="\[\033[38;5;135m\][\A] \W\$\[\033[0m\] "' >> "$BASHRC_FILE"
+cat >> "$BASHRC_FILE" << 'PROMPT_EOF'
+if [ -f /.dockerenv ]; then
+  export PS1="\[\033[38;5;135m\][\A] \W\$\[\033[0m\] "
+else
+  export PS1="\[\033[38;5;33m\][\A] \W\$\[\033[0m\] "
+fi
+PROMPT_EOF
 echo "export GH_TOKEN=\"$TOKEN\"" >> "$BASHRC_FILE"
 echo "alias claude='claude --dangerously-skip-permissions'" >> "$BASHRC_FILE"
 echo "### jhkim-config end" >> "$BASHRC_FILE"
