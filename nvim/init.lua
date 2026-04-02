@@ -89,7 +89,7 @@ vim.keymap.set('n', '<Esc>', '<cmd>noh<CR>', { noremap = true, silent = true })
 
 -- 5. 모드별 배경색 변경 (Insert = 차가운 톤)
 local normal_bg = "#1e1e1e"
-local insert_bg = "#1a1e22"
+local insert_bg = "#1a2535"
 
 vim.api.nvim_create_autocmd("ModeChanged", {
     pattern = "*:i*",
@@ -103,6 +103,9 @@ vim.api.nvim_create_autocmd("ModeChanged", {
         vim.api.nvim_set_hl(0, "Normal", { bg = normal_bg })
     end,
 })
+
+-- 6. Visual mode 선택 하이라이트 색상 (배경과 대비되도록)
+vim.api.nvim_set_hl(0, "Visual", { bg = "#3d5478" })
 
 -- 키 입력 타이밍 설정 (방향키 딜레이 해결)
 opt.timeoutlen = 300        -- 매핑 완성을 기다리는 시간 (ms) - 500에서 300으로 단축
