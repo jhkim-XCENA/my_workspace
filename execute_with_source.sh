@@ -137,10 +137,14 @@ fi
 echo "" >> "$BASHRC_FILE"
 echo "### jhkim-config start" >> "$BASHRC_FILE"
 cat >> "$BASHRC_FILE" << 'PROMPT_EOF'
+__git_branch() {
+  local b
+  b="$(git symbolic-ref --short HEAD 2>/dev/null)" && echo " ($b)"
+}
 if [ -f /.dockerenv ]; then
-  export PS1="\[\033[38;5;135m\][\A] \W\$\[\033[0m\] "
+  export PS1="\[\033[38;5;135m\][\A] \W\$(__git_branch)\$\[\033[0m\] "
 else
-  export PS1="\[\033[38;5;33m\][\A] \W\$\[\033[0m\] "
+  export PS1="\[\033[38;5;33m\][\A] \W\$(__git_branch)\$\[\033[0m\] "
 fi
 PROMPT_EOF
 echo "export GH_TOKEN=\"$TOKEN\"" >> "$BASHRC_FILE"
