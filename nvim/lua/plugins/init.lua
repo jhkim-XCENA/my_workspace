@@ -2,13 +2,16 @@
 -- 기본 플러그인 설정
 
 return {
-    -- 1. Color Scheme (OneDark Darker)
+    -- 1. Color Scheme (VS Code Dark+)
     {
-        "olimorris/onedarkpro.nvim",
+        "Mofiqul/vscode.nvim",
         priority = 1000,
         config = function()
-            require("onedarkpro").setup({})
-            vim.cmd.colorscheme("onedark_dark")
+            require("vscode").setup({
+                style = "dark",
+                transparent = false,
+            })
+            require("vscode").load()
         end,
     },
 
@@ -37,7 +40,7 @@ return {
         config = function()
             require('lualine').setup({
                 options = {
-                    theme = "onedark",
+                    theme = "vscode",
                     component_separators = { left = '|', right = '|'},
                 },
                 sections = {
@@ -122,11 +125,11 @@ return {
                 under_cursor = true, -- 커서 위치 단어도 강조
             })
             
-            -- 강조 색상 커스터마이징 (onedark 테마에 맞게)
+            -- 강조 색상 커스터마이징 (VS Code Dark+ 테마에 맞게)
             vim.cmd([=[
-              highlight IlluminatedWord cterm=underline gui=underline guibg=#3a3f4b
-              highlight IlluminatedCWord cterm=underline gui=underline guibg=#3a3f4b
-              highlight IlluminatedWordText cterm=underline gui=underline guibg=#3a3f4b
+              highlight IlluminatedWord cterm=underline gui=underline guibg=#3a3a3a
+              highlight IlluminatedCWord cterm=underline gui=underline guibg=#3a3a3a
+              highlight IlluminatedWordText cterm=underline gui=underline guibg=#3a3a3a
             ]=])
         end,
     },

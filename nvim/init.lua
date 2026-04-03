@@ -87,9 +87,9 @@ vim.keymap.set('n', '<Esc>', '<cmd>noh<CR>', { noremap = true, silent = true })
 -- Lazy.nvim 방식에서는 보통 plugins/ 폴더 내에서 config() 함수로 처리하는 것이 깔끔합니다.
 -- 하지만 기존 구조를 유지하기 위해 아래 require를 유지하되, 내용은 Lazy spec에 맞게 수정했습니다.
 
--- 5. 모드별 배경색 변경 (Insert = 차가운 톤)
+-- 5. 모드별 배경색 변경 (Insert = 차가운 톤, VS Code Dark+ 기반)
 local normal_bg = "#1e1e1e"
-local insert_bg = "#1a2535"
+local insert_bg = "#1e2a35"
 
 vim.api.nvim_create_autocmd("ModeChanged", {
     pattern = "*:i*",
@@ -104,8 +104,8 @@ vim.api.nvim_create_autocmd("ModeChanged", {
     end,
 })
 
--- 6. Visual mode 선택 하이라이트 색상 (배경과 대비되도록)
-vim.api.nvim_set_hl(0, "Visual", { bg = "#3d5478" })
+-- 6. Visual mode 선택 하이라이트 색상 (VS Code Dark+ selection color)
+vim.api.nvim_set_hl(0, "Visual", { bg = "#264f78" })
 
 -- 키 입력 타이밍 설정 (방향키 딜레이 해결)
 opt.timeoutlen = 300        -- 매핑 완성을 기다리는 시간 (ms) - 500에서 300으로 단축
