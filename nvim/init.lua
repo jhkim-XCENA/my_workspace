@@ -116,7 +116,7 @@ vim.api.nvim_create_autocmd("FileType", {
     pattern = "csv",
     callback = function()
         vim.g.csv_arrange_align = "l*"
-        vim.cmd("ArrangeColumn!")
+        vim.cmd("%ArrangeColumn!")
     end,
 })
 
