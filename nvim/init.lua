@@ -111,6 +111,15 @@ vim.api.nvim_set_hl(0, "Visual", { bg = "#264f78" })
 opt.timeoutlen = 300        -- 매핑 완성을 기다리는 시간 (ms) - 500에서 300으로 단축
 opt.ttimeoutlen = 0         -- 터미널 시퀀스 타이밍 (즉시 처리!) - 0ms로 설정하여 딜레이 완전 제거
 
+-- CSV 파일 열 때 자동 정렬 (csv.vim 플러그인)
+vim.api.nvim_create_autocmd("FileType", {
+    pattern = "csv",
+    callback = function()
+        vim.g.csv_arrange_align = "l*"
+        vim.cmd("ArrangeColumn!")
+    end,
+})
+
 -- 키 입력 타이밍 설정 - keyremap.lua 로드
 local config_path = vim.fn.stdpath("config")
 dofile(config_path .. "/keyremap.lua")
