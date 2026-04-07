@@ -197,6 +197,8 @@ docker exec "$container_name" bash -c '
   # Fix ownership of home directory and all files inside
   chown -R "$CUSER":"$CUSER" /home/"$CUSER"
   chown -R "$CUSER":"$CUSER" /home/"$CUSER"/.claude 2>/dev/null || true
+  chown -R "$CUSER":"$CUSER" /sdk_release 2>/dev/null || true
+  chown -R "$CUSER":"$CUSER" /llvm-project 2>/dev/null || true
 
   # Auto-switch to worker when entering as root
   echo "if [ \"\$(id -u)\" = \"0\" ] && [ -t 0 ]; then exec su - $CUSER; fi" >> /root/.bashrc
