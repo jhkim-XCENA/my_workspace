@@ -101,13 +101,22 @@ log ""
 log "Script directory: $SCRIPT_DIR"
 
 # GitHub token 설정
-TOKEN="$(cat "$SCRIPT_DIR/token.txt" 2>/dev/null | tr -d '[:space:]')"
+TOKEN="$(cat "$SCRIPT_DIR/github_token.txt" 2>/dev/null | tr -d '[:space:]')"
 if [ -z "$TOKEN" ]; then
-    log "${RED}Error:${NC} token.txt is empty. Please fill in your GitHub token into $SCRIPT_DIR/token.txt"
+    log "${RED}Error:${NC} github_token.txt is empty. Please fill in your GitHub token into $SCRIPT_DIR/github_token.txt"
     return 1
 fi
 export GITHUB_TOKEN="$TOKEN"
-log "GITHUB_TOKEN set from token.txt"
+log "GITHUB_TOKEN set from github_token.txt"
+
+# Claude OAuth token 설정
+CLAUDE_TOKEN="$(cat "$SCRIPT_DIR/claude_token.txt" 2>/dev/null | tr -d '[:space:]')"
+if [ -n "$CLAUDE_TOKEN" ]; then
+    export CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_TOKEN"
+    log "CLAUDE_CODE_OAUTH_TOKEN set from claude_token.txt"
+else
+    log "${YELLOW}Warning:${NC} claude_token.txt not found or empty. Claude Code OAuth token not set."
+fi
 
 # nvim 설치
 log "Running nvim setup..."

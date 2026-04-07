@@ -3,3 +3,6 @@ nvim/lazy-lock.json
 sdk_release/
 llvm-project/
 shared/
+github_token.txt
+claude_token.txt
+claude_credentials.json

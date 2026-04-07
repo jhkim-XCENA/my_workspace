@@ -35,9 +35,9 @@ REQUIRED_DIRS=("$HOME/.ssh" "$CLAUDE_CONFIG_DIR")
 REQUIRED_FILES=(
     "$HOME/.gitconfig"
     "$CLAUDE_BINARY"
-    "$CLAUDE_CONFIG_DIR/.credentials.json"
     "$HOME/.claude.json"
-    "$SCRIPT_PATH/token.txt"
+    "$SCRIPT_PATH/github_token.txt"
+    "$SCRIPT_PATH/claude_token.txt"
 )
 
 for dir in "${REQUIRED_DIRS[@]}"; do
@@ -47,11 +47,18 @@ for file in "${REQUIRED_FILES[@]}"; do
     if [ -e "$file" ]; then pass "$file"; else fail "$file 파일 없음"; fi
 done
 
-TOKEN="$(cat "$SCRIPT_PATH/token.txt" 2>/dev/null | tr -d '[:space:]')"
+TOKEN="$(cat "$SCRIPT_PATH/github_token.txt" 2>/dev/null | tr -d '[:space:]')"
 if [ -n "$TOKEN" ]; then
-    pass "token.txt 내용 있음"
+    pass "github_token.txt 내용 있음"
 else
-    fail "token.txt 파일이 없거나 비어있음"
+    fail "github_token.txt 파일이 없거나 비어있음"
+fi
+
+CLAUDE_TOKEN="$(cat "$SCRIPT_PATH/claude_token.txt" 2>/dev/null | tr -d '[:space:]')"
+if [ -n "$CLAUDE_TOKEN" ]; then
+    pass "claude_token.txt 내용 있음"
+else
+    fail "claude_token.txt 파일이 없거나 비어있음"
 fi
 
 echo ""
@@ -141,6 +148,7 @@ docker run -dit \
   -e GIT_COMMITTER_NAME="jhkim-XCENA" \
   -e GIT_COMMITTER_EMAIL="jeongho.kim@xcena.com" \
   -e GITHUB_TOKEN="$TOKEN" \
+  -e CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_TOKEN" \
   -e CONTAINER_NAME="$container_name" \
   -e USER="$CONTAINER_USER" \
   -e LANG=C.UTF-8 \

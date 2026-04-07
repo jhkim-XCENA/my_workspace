@@ -21,7 +21,8 @@ source ./execute_with_source.sh
 ```
 ~/
 ├── execute_with_source.sh   # 전체 환경 설정 (source로 실행)
-├── token.txt                # GitHub token (git-ignored)
+├── github_token.txt         # GitHub token (git-ignored)
+├── claude_token.txt         # Claude OAuth token (git-ignored)
 ├── .clangd                  # C++ LSP 설정 (mu_library 경로 포함)
 ├── .gitignore               # nvim/, sdk_release/, llvm-project/, shared/ 제외
 ├── nvim/                    # Neovim 설정 (init.lua, plugins, LSP)
@@ -32,7 +33,8 @@ source ./execute_with_source.sh
 ## Environment Details
 
 - `execute_with_source.sh`는 반드시 `source`로 실행 (subshell 불가)
-- GitHub token: `token.txt`에서 읽어 `GITHUB_TOKEN`, `GH_TOKEN` 환경변수로 설정
+- GitHub token: `github_token.txt`에서 읽어 `GITHUB_TOKEN`, `GH_TOKEN` 환경변수로 설정
+- Claude token: `claude_token.txt`에서 읽어 `CLAUDE_CODE_OAUTH_TOKEN` 환경변수로 설정
 - 컨테이너 환경은 PS1 색상으로 구분 (Docker: 보라색, 호스트: 파란색)
 - Claude alias: `claude --dangerously-skip-permissions`
 

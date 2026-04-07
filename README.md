@@ -69,7 +69,8 @@ source ./execute_with_source.sh
 my_workspace/
 ├── execute_with_source.sh       # 전체 환경 설정 (source로 실행)
 ├── launch_docker_container.sh   # Docker 환경 점검 + 컨테이너 생성/실행
-├── token.txt                    # GitHub token (git-ignored)
+├── github_token.txt             # GitHub token (git-ignored)
+├── claude_token.txt             # Claude OAuth token (git-ignored)
 ├── nvim/
 │   ├── init.lua                 # 메인 설정 파일
 │   ├── install.sh               # Neovim 설치 스크립트
