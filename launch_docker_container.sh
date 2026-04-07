@@ -102,7 +102,7 @@ clone_if_missing() {
     local repo="$2"
     if [ ! -d "$dir" ]; then
         echo "Cloning $repo ..."
-        git clone "https://x-access-token:${TOKEN}@github.com/${repo}.git" "$dir" >> "$SETUP_LOG" 2>&1
+        git clone --depth 1 "https://x-access-token:${TOKEN}@github.com/${repo}.git" "$dir" >> "$SETUP_LOG" 2>&1
     else
         echo "[skip] $repo (already cloned)"
     fi
