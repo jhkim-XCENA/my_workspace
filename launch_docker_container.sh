@@ -33,7 +33,6 @@ echo "[1] 호스트 파일 및 디렉토리"
 
 REQUIRED_DIRS=("$HOME/.ssh" "$CLAUDE_CONFIG_DIR")
 REQUIRED_FILES=(
-    "$HOME/.gitconfig"
     "$CLAUDE_BINARY"
     "$HOME/.claude.json"
     "$SCRIPT_PATH/github_token.txt"
@@ -137,16 +136,11 @@ echo "Launching container: $container_name ..."
 docker run -dit \
   --name "$container_name" \
   -v "$mount_dir:/home/${CONTAINER_USER}" \
-  -v "$HOME/.gitconfig:/home/${CONTAINER_USER}/.gitconfig:ro" \
   -v "$HOME/.ssh:/home/${CONTAINER_USER}/.ssh:ro" \
   -v "${CLAUDE_BINARY}:/usr/local/bin/claude:ro" \
   -v "${CLAUDE_CONFIG_DIR}:/home/${CONTAINER_USER}/.claude" \
   -v "$HOME/.claude.json:/home/${CONTAINER_USER}/.claude.json" \
   -e GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=accept-new" \
-  -e GIT_AUTHOR_NAME="jhkim-XCENA" \
-  -e GIT_AUTHOR_EMAIL="jeongho.kim@xcena.com" \
-  -e GIT_COMMITTER_NAME="jhkim-XCENA" \
-  -e GIT_COMMITTER_EMAIL="jeongho.kim@xcena.com" \
   -e GITHUB_TOKEN="$TOKEN" \
   -e CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_TOKEN" \
   -e CONTAINER_NAME="$container_name" \
@@ -195,7 +189,8 @@ docker exec "$container_name" bash -c '
   chmod 440 /etc/sudoers.d/"$CUSER"
 
   # Fix ownership of home directory and all files inside
-  chown -R "$CUSER":"$CUSER" /home/"$CUSER"
+  # read-only 마운트 파일(.ssh, .gitconfig)은 chown이 실패할 수 있으므로 || true
+  chown -R "$CUSER":"$CUSER" /home/"$CUSER" 2>/dev/null || true
   chown -R "$CUSER":"$CUSER" /home/"$CUSER"/.claude 2>/dev/null || true
   chown -R "$CUSER":"$CUSER" /sdk_release 2>/dev/null || true
   chown -R "$CUSER":"$CUSER" /llvm-project 2>/dev/null || true
@@ -219,6 +214,13 @@ docker exec -u "$CONTAINER_USER" "$container_name" bash -c '
       fi
     fi
   done
+' >> "$SETUP_LOG" 2>&1
+
+# --- Set git config inside container ---
+echo "Setting git config ..."
+docker exec -u "$CONTAINER_USER" "$container_name" bash -c '
+  git config --global user.name "jhkim-XCENA"
+  git config --global user.email "jeongho.kim@xcena.com"
 ' >> "$SETUP_LOG" 2>&1
 
 # --- Run execute_with_source.sh as worker inside container ---
