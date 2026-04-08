@@ -135,6 +135,7 @@ fi
 echo "Launching container: $container_name ..."
 docker run -dit \
   --name "$container_name" \
+  --user root \
   -v "$mount_dir:/home/${CONTAINER_USER}" \
   -v "$HOME/.ssh:/home/${CONTAINER_USER}/.ssh:ro" \
   -v "${CLAUDE_BINARY}:/usr/local/bin/claude:ro" \
@@ -235,6 +236,6 @@ echo "Launched container: $container_name"
 echo "  Detail log: $SETUP_LOG"
 echo ""
 echo ""
-echo "  docker exec -it $container_name bash"
+echo "  docker exec -u $CONTAINER_USER -it $container_name bash"
 echo ""
 echo ""
