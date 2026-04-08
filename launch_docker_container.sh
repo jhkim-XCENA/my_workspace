@@ -166,10 +166,15 @@ docker exec "$container_name" bash -c '
   CUSER="worker"
   HOST_UID='"$(id -u)"'
 
+  # Remove existing user with same UID (e.g. ubuntu:1000) to avoid conflict
+  EXISTING=$(getent passwd "$HOST_UID" | cut -d: -f1 || true)
+  if [ -n "$EXISTING" ] && [ "$EXISTING" != "$CUSER" ]; then
+    userdel "$EXISTING" 2>/dev/null || true
+  fi
+
   # Create user with host UID to match bind mount file ownership
   if ! id "$CUSER" &>/dev/null; then
-    useradd -m -s /bin/bash -u "$HOST_UID" "$CUSER" \
-      || useradd -m -s /bin/bash -o -u "$HOST_UID" "$CUSER"
+    useradd -m -s /bin/bash -u "$HOST_UID" "$CUSER"
   fi
 
   # Ensure .bashrc and .profile exist (useradd skips skel if home already exists)
@@ -180,9 +185,9 @@ docker exec "$container_name" bash -c '
     fi
   done
 
-  # Install essential tools (curl, sudo) before user setup runs
+  # Install essential tools before user setup runs
   apt-get update -qq
-  apt-get install -y -qq curl sudo 2>/dev/null
+  apt-get install -y -qq curl sudo git 2>/dev/null
 
   # Grant passwordless sudo
   usermod -aG sudo "$CUSER" 2>/dev/null || true
@@ -222,6 +227,21 @@ echo "Setting git config ..."
 docker exec -u "$CONTAINER_USER" "$container_name" bash -c '
   git config --global user.name "jhkim-XCENA"
   git config --global user.email "jeongho.kim@xcena.com"
+  # Use GITHUB_TOKEN for HTTPS push (SSH key may belong to a different account)
+  git config --global credential.helper \
+    "!f() { echo username=x-access-token; echo password=\$GITHUB_TOKEN; }; f"
+' >> "$SETUP_LOG" 2>&1
+
+# --- Switch home repo remote to HTTPS (SSH key identity mismatch) ---
+echo "Switching home repo to HTTPS ..."
+docker exec -u "$CONTAINER_USER" "$container_name" bash -c '
+  cd ~ && url=$(git remote get-url origin 2>/dev/null || true)
+  if [ -n "$url" ]; then
+    https_url=$(echo "$url" | sed -E "s|git@github.com:|https://github.com/|")
+    if [ "$url" != "$https_url" ]; then
+      git remote set-url origin "$https_url"
+    fi
+  fi
 ' >> "$SETUP_LOG" 2>&1
 
 # --- Run execute_with_source.sh as worker inside container ---
@@ -236,6 +256,6 @@ echo "Launched container: $container_name"
 echo "  Detail log: $SETUP_LOG"
 echo ""
 echo ""
-echo "  docker exec -u $CONTAINER_USER -it $container_name bash"
+echo "  docker exec -u $CONTAINER_USER -w /home/$CONTAINER_USER -it $container_name bash"
 echo ""
 echo ""
