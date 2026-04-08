@@ -79,7 +79,25 @@ else
     fi
 fi
 
-if [ -e /dev/kvm ]; then pass "/dev/kvm 존재"; else fail "/dev/kvm 없음"; fi
+# --- xcena_cli device detection ---
+DEVICE_COUNT=0
+USE_KVM=true
+if command -v xcena_cli &>/dev/null; then
+    DEVICE_COUNT=$(xcena_cli num-device 2>/dev/null | grep -oP 'Number of devices : \K[0-9]+' || echo "0")
+    pass "xcena_cli 존재 (디바이스 ${DEVICE_COUNT}개 감지)"
+    if [ "$DEVICE_COUNT" -ge 1 ]; then
+        USE_KVM=false
+        warn "디바이스 ${DEVICE_COUNT}개 감지 → silicon 모드 (--device=/dev/kvm, --cap-add=SYS_ADMIN 없이 실행)"
+    else
+        pass "디바이스 없음 → qemu 모드 (/dev/kvm 사용)"
+    fi
+else
+    warn "xcena_cli 없음 → qemu 모드로 진행"
+fi
+
+if [ "$USE_KVM" = true ]; then
+    if [ -e /dev/kvm ]; then pass "/dev/kvm 존재"; else fail "/dev/kvm 없음"; fi
+fi
 
 echo ""
 
@@ -120,7 +138,12 @@ echo "$mount_dir will be used as workspace root"
 # Generate container name
 # ============================================================
 date_str=$(date +%y%m%d)
-container_name="jhkim${date_str}"
+if [ "$USE_KVM" = true ]; then
+    mode="qemu"
+else
+    mode="silicon"
+fi
+container_name="jhkim_${mode}_${date_str}"
 if [ "$(docker ps -a -q -f name="^/${container_name}$")" ]; then
     suffix=1
     while [ "$(docker ps -a -q -f name="^/${container_name}_${suffix}$")" ]; do
@@ -132,7 +155,15 @@ fi
 # ============================================================
 # Launch container
 # ============================================================
-echo "Launching container: $container_name ..."
+echo "Launching container: $container_name (${mode} 모드) ..."
+
+DOCKER_KVM_OPTS=()
+if [ "$USE_KVM" = true ]; then
+    DOCKER_KVM_OPTS+=(--device=/dev/kvm --cap-add=SYS_ADMIN)
+else
+    DOCKER_KVM_OPTS+=(--privileged)
+fi
+
 docker run -dit \
   --name "$container_name" \
   --user root \
@@ -148,8 +179,7 @@ docker run -dit \
   -e USER="$CONTAINER_USER" \
   -e LANG=C.UTF-8 \
   -e LC_ALL=C.UTF-8 \
-  --device=/dev/kvm \
-  --cap-add=SYS_ADMIN \
+  "${DOCKER_KVM_OPTS[@]}" \
   "$image_name" >> "$SETUP_LOG" 2>&1
 
 # --- Copy repos into container (isolated from host) ---
