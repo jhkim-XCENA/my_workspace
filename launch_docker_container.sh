@@ -1,5 +1,10 @@
 #!/bin/bash
-set -euo pipefail
+
+# source로 실행 강제
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    echo "this script should be executed like: source ./launch_docker_container.sh"
+    exit 1
+fi
 
 # --- Configuration ---
 SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -104,7 +109,7 @@ echo ""
 # --- Preflight result ---
 if [ "$ERRORS" -ne 0 ]; then
     echo -e "${RED}${ERRORS}개 항목 미충족. 위 내용을 확인하세요.${NC}"
-    exit 1
+    return 1
 fi
 echo -e "${GREEN}Preflight 통과${NC}"
 echo ""
@@ -279,13 +284,25 @@ echo "Running environment setup inside container ..."
 docker exec -u "$CONTAINER_USER" "$container_name" bash -c 'cd ~ && source ./execute_with_source.sh'
 
 # ============================================================
+# Register docker_exec alias
+# ============================================================
+BASHRC_FILE="$HOME/.bashrc"
+ALIAS_LINE="alias docker_exec='docker exec -u $CONTAINER_USER -w /home/$CONTAINER_USER -it $container_name bash'"
+
+if grep -q "^alias docker_exec=" "$BASHRC_FILE"; then
+    sed -i "s|^alias docker_exec=.*|${ALIAS_LINE}|" "$BASHRC_FILE"
+else
+    echo "$ALIAS_LINE" >> "$BASHRC_FILE"
+fi
+
+source "$BASHRC_FILE"
+
+# ============================================================
 # Output
 # ============================================================
 echo ""
 echo "Launched container: $container_name"
 echo "  Detail log: $SETUP_LOG"
 echo ""
-echo ""
-echo "  docker exec -u $CONTAINER_USER -w /home/$CONTAINER_USER -it $container_name bash"
-echo ""
+echo "  docker_exec 를 실행하여 컨테이너에 접속하세요."
 echo ""
