@@ -115,11 +115,22 @@ if [ -n "$CLAUDE_TOKEN" ]; then
     export CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_TOKEN"
     log "CLAUDE_CODE_OAUTH_TOKEN set from claude_token.txt"
 
+    # ~/.claude/.credentials.json에 토큰 직접 기록
+    # (CLAUDE_CODE_OAUTH_TOKEN env var만으로는 완전히 새 설치에서 인증되지 않는 경우 대비)
+    mkdir -p "$HOME/.claude"
+    python3 -c "
+import json
+creds_path = '$HOME/.claude/.credentials.json'
+with open(creds_path, 'w') as f:
+    json.dump({'claudeAiOauth': '$CLAUDE_TOKEN'}, f)
+"
+    log "claudeAiOauth written to ~/.claude/.credentials.json"
+
     # ~/.claude.json에 저장된 oauthAccount 제거
     # (저장된 만료 세션이 CLAUDE_CODE_OAUTH_TOKEN보다 우선되어 브라우저 인증을 유발하는 문제 방지)
     if [ -f "$HOME/.claude.json" ]; then
         python3 -c "
-import json, sys
+import json
 path = '$HOME/.claude.json'
 with open(path) as f:
     d = json.load(f)
@@ -127,8 +138,7 @@ if 'oauthAccount' in d:
     del d['oauthAccount']
     with open(path, 'w') as f:
         json.dump(d, f)
-    print('oauthAccount cleared from ~/.claude.json')
-" && log "oauthAccount cleared from ~/.claude.json (CLAUDE_CODE_OAUTH_TOKEN 우선 사용)"
+" && log "oauthAccount cleared from ~/.claude.json"
     fi
 else
     log "${YELLOW}Warning:${NC} claude_token.txt not found or empty. Claude Code OAuth token not set."
