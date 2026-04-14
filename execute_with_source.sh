@@ -115,16 +115,9 @@ if [ -n "$CLAUDE_TOKEN" ]; then
     export CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_TOKEN"
     log "CLAUDE_CODE_OAUTH_TOKEN set from claude_token.txt"
 
-    # ~/.claude/.credentials.json에 토큰 직접 기록
-    # (CLAUDE_CODE_OAUTH_TOKEN env var만으로는 완전히 새 설치에서 인증되지 않는 경우 대비)
-    mkdir -p "$HOME/.claude"
-    python3 -c "
-import json
-creds_path = '$HOME/.claude/.credentials.json'
-with open(creds_path, 'w') as f:
-    json.dump({'claudeAiOauth': '$CLAUDE_TOKEN'}, f)
-"
-    log "claudeAiOauth written to ~/.claude/.credentials.json"
+    # 환경변수 전달 검증 (토큰 앞 12자만 표시)
+    TOKEN_PREVIEW="${CLAUDE_CODE_OAUTH_TOKEN:0:12}..."
+    log "  → CLAUDE_CODE_OAUTH_TOKEN = ${TOKEN_PREVIEW}"
 else
     log "${YELLOW}Warning:${NC} claude_token.txt not found or empty. Claude Code OAuth token not set."
 fi
