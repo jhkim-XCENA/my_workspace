@@ -12,8 +12,6 @@ mount_dir="$SCRIPT_PATH"
 SETUP_LOG="$SCRIPT_PATH/setup.log"
 : > "$SETUP_LOG"
 image_name="192.168.57.60:8008/sdk_release/sdk_release:latest"
-CLAUDE_VERSIONS_DIR="$HOME/.local/share/claude/versions"
-CLAUDE_BINARY="$CLAUDE_VERSIONS_DIR/$(ls -v "$CLAUDE_VERSIONS_DIR" 2>/dev/null | tail -1)"
 CLAUDE_CONFIG_DIR="$HOME/.claude"
 CONTAINER_USER="worker"
 
@@ -38,7 +36,6 @@ echo "[1] 호스트 파일 및 디렉토리"
 
 REQUIRED_DIRS=("$HOME/.ssh" "$CLAUDE_CONFIG_DIR")
 REQUIRED_FILES=(
-    "$CLAUDE_BINARY"
     "$HOME/.claude.json"
     "$SCRIPT_PATH/github_token.txt"
     "$SCRIPT_PATH/claude_token.txt"
@@ -174,7 +171,6 @@ docker run -dit \
   --user root \
   -v "$mount_dir:/home/${CONTAINER_USER}" \
   -v "$HOME/.ssh:/home/${CONTAINER_USER}/.ssh:ro" \
-  -v "${CLAUDE_BINARY}:/usr/local/bin/claude:ro" \
   -v "${CLAUDE_CONFIG_DIR}:/home/${CONTAINER_USER}/.claude" \
   -v "$HOME/.claude.json:/home/${CONTAINER_USER}/.claude.json" \
   -e GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=accept-new" \
@@ -277,6 +273,14 @@ docker exec -u "$CONTAINER_USER" "$container_name" bash -c '
       git remote set-url origin "$https_url"
     fi
   fi
+' >> "$SETUP_LOG" 2>&1
+
+# --- Install Claude Code inside container ---
+echo "Installing Claude Code inside container ..."
+docker exec -u "$CONTAINER_USER" "$container_name" bash -c '
+  curl -fsSL https://claude.ai/install.sh | bash
+  echo "export PATH=\"\$HOME/.local/bin:\$PATH\"" >> ~/.bashrc
+  export PATH="$HOME/.local/bin:$PATH"
 ' >> "$SETUP_LOG" 2>&1
 
 # --- Run execute_with_source.sh as worker inside container ---
