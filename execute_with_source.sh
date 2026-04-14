@@ -125,21 +125,6 @@ with open(creds_path, 'w') as f:
     json.dump({'claudeAiOauth': '$CLAUDE_TOKEN'}, f)
 "
     log "claudeAiOauth written to ~/.claude/.credentials.json"
-
-    # ~/.claude.json에 저장된 oauthAccount 제거
-    # (저장된 만료 세션이 CLAUDE_CODE_OAUTH_TOKEN보다 우선되어 브라우저 인증을 유발하는 문제 방지)
-    if [ -f "$HOME/.claude.json" ]; then
-        python3 -c "
-import json
-path = '$HOME/.claude.json'
-with open(path) as f:
-    d = json.load(f)
-if 'oauthAccount' in d:
-    del d['oauthAccount']
-    with open(path, 'w') as f:
-        json.dump(d, f)
-" && log "oauthAccount cleared from ~/.claude.json"
-    fi
 else
     log "${YELLOW}Warning:${NC} claude_token.txt not found or empty. Claude Code OAuth token not set."
 fi
