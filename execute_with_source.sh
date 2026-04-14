@@ -118,6 +118,23 @@ if [ -n "$CLAUDE_TOKEN" ]; then
     # 환경변수 전달 검증 (토큰 앞 12자만 표시)
     TOKEN_PREVIEW="${CLAUDE_CODE_OAUTH_TOKEN:0:12}..."
     log "  → CLAUDE_CODE_OAUTH_TOKEN = ${TOKEN_PREVIEW}"
+
+    # Claude Code 설치 및 인증 검증
+    if command -v claude &>/dev/null; then
+        CLAUDE_VER="$(claude --version 2>/dev/null)"
+        log "  → Claude Code installed: v${CLAUDE_VER}"
+
+        AUTH_JSON="$(claude auth status 2>/dev/null)"
+        if echo "$AUTH_JSON" | grep -q '"loggedIn": true'; then
+            AUTH_METHOD="$(echo "$AUTH_JSON" | grep -oP '"authMethod": "\K[^"]*')"
+            log "  ${GREEN}→ Claude Code auth OK${NC} (method: ${AUTH_METHOD})"
+        else
+            log "  ${RED}→ Claude Code auth FAILED${NC}"
+            log "  ${YELLOW}  claude auth status 출력:${NC} $AUTH_JSON"
+        fi
+    else
+        log "  ${YELLOW}→ Claude Code not installed yet (skipping auth check)${NC}"
+    fi
 else
     log "${YELLOW}Warning:${NC} claude_token.txt not found or empty. Claude Code OAuth token not set."
 fi
@@ -161,6 +178,7 @@ else
 fi
 PROMPT_EOF
 echo "export GH_TOKEN=\"$TOKEN\"" >> "$BASHRC_FILE"
+echo "bind 'set enable-bracketed-paste off' 2>/dev/null" >> "$BASHRC_FILE"
 echo "alias claude='claude --dangerously-skip-permissions'" >> "$BASHRC_FILE"
 echo "### jhkim-config end" >> "$BASHRC_FILE"
 
