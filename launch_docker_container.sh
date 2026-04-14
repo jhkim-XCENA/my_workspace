@@ -110,32 +110,7 @@ echo -e "${GREEN}Preflight 통과${NC}"
 echo ""
 
 # ============================================================
-# Prepare directories
-# ============================================================
-parent_dir="$(dirname "$mount_dir")"
-
-clone_if_missing() {
-    local dir="$1"
-    local repo="$2"
-    if [ ! -d "$dir" ]; then
-        echo "Cloning $repo ..."
-        git clone --depth 1 "https://x-access-token:${TOKEN}@github.com/${repo}.git" "$dir" >> "$SETUP_LOG" 2>&1
-    else
-        echo "[skip] $repo (already cloned)"
-    fi
-}
-
-clone_if_missing "$parent_dir/sdk_release"   "xcena-dev/sdk_release"
-clone_if_missing "$parent_dir/llvm-project"  "xcena-dev/llvm-project-fork"
-
-# --- Update submodules ---
-echo "Updating submodules (sdk_release/tools/pxcc) ..."
-git -C "$parent_dir/sdk_release" submodule update --init tools/pxcc >> "$SETUP_LOG" 2>&1
-
-echo "$mount_dir will be used as workspace root"
-
-# ============================================================
-# Generate container name
+# Generate container name and session directory
 # ============================================================
 date_str=$(date +%y%m%d)
 if [ "$USE_KVM" = true ]; then
@@ -143,14 +118,51 @@ if [ "$USE_KVM" = true ]; then
 else
     mode="silicon"
 fi
+
+session_base="$SCRIPT_PATH/jhkim_${mode}"
 container_name="jhkim_${mode}_${date_str}"
-if [ "$(docker ps -a -q -f name="^/${container_name}$")" ]; then
+session_dir="${session_base}/${mode}_${date_str}"
+
+if [ "$(docker ps -a -q -f name="^/${container_name}$")" ] || [ -d "$session_dir" ]; then
     suffix=1
-    while [ "$(docker ps -a -q -f name="^/${container_name}_${suffix}$")" ]; do
+    while [ "$(docker ps -a -q -f name="^/${container_name}_${suffix}$")" ] || [ -d "${session_dir}_${suffix}" ]; do
         suffix=$((suffix + 1))
     done
     container_name="${container_name}_${suffix}"
+    session_dir="${session_dir}_${suffix}"
 fi
+
+mkdir -p "$session_dir"
+echo "Session directory: $session_dir"
+
+# ============================================================
+# Clone repos (shallow, SSH)
+# ============================================================
+clone_if_missing() {
+    local dir="$1"
+    local repo="$2"
+    if [ ! -d "$dir" ]; then
+        echo "Cloning $repo ..."
+        GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=accept-new" \
+            git clone --depth 1 "git@github.com:${repo}.git" "$dir" >> "$SETUP_LOG" 2>&1
+    else
+        echo "[skip] $repo (already cloned)"
+    fi
+}
+
+clone_if_missing "$session_dir/sdk_release"   "xcena-dev/sdk_release"
+clone_if_missing "$session_dir/llvm-project"  "xcena-dev/llvm-project-fork"
+
+# --- Update submodules ---
+echo "Updating submodules (sdk_release/tools/pxcc) ..."
+GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=accept-new" \
+    git -C "$session_dir/sdk_release" submodule update --init tools/pxcc >> "$SETUP_LOG" 2>&1
+
+# --- Advance pxcc to latest origin/main (submodule pinned commit 무시) ---
+echo "Updating pxcc to latest origin/main ..."
+GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=accept-new" \
+    git -C "$session_dir/sdk_release/tools/pxcc" fetch origin main >> "$SETUP_LOG" 2>&1
+git -C "$session_dir/sdk_release/tools/pxcc" checkout origin/main >> "$SETUP_LOG" 2>&1
 
 # ============================================================
 # Launch container
@@ -168,7 +180,9 @@ docker run -dit \
   --name "$container_name" \
   --user root \
   -v "$mount_dir:/home/${CONTAINER_USER}" \
-  -v "$HOME/.ssh:/home/${CONTAINER_USER}/.ssh:ro" \
+  -v "$HOME/.ssh:/home/${CONTAINER_USER}/.ssh" \
+  -v "$session_dir/sdk_release:/sdk_release" \
+  -v "$session_dir/llvm-project:/llvm-project" \
   -e GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=accept-new" \
   -e GITHUB_TOKEN="$TOKEN" \
   -e CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_TOKEN" \
@@ -179,11 +193,21 @@ docker run -dit \
   "${DOCKER_KVM_OPTS[@]}" \
   "$image_name" >> "$SETUP_LOG" 2>&1
 
-# --- Copy repos into container (isolated from host) ---
-echo "Copying sdk_release into container ..."
-docker cp "$parent_dir/sdk_release" "$container_name":/sdk_release >> "$SETUP_LOG" 2>&1
-echo "Copying llvm-project into container ..."
-docker cp "$parent_dir/llvm-project" "$container_name":/llvm-project >> "$SETUP_LOG" 2>&1
+# --- 컨테이너 → 호스트 SSH 허용 (공개키를 호스트 authorized_keys에 등록) ---
+echo "Enabling container-to-host SSH ..."
+PUBKEY=$(cat "$HOME/.ssh/id_ed25519.pub" 2>/dev/null || true)
+if [ -n "$PUBKEY" ]; then
+    AUTH_KEYS="$HOME/.ssh/authorized_keys"
+    touch "$AUTH_KEYS" && chmod 600 "$AUTH_KEYS"
+    if ! grep -qF "$PUBKEY" "$AUTH_KEYS" 2>/dev/null; then
+        echo "$PUBKEY" >> "$AUTH_KEYS"
+        pass "public key → 호스트 authorized_keys 등록 완료"
+    else
+        pass "public key 이미 authorized_keys에 있음"
+    fi
+else
+    warn "id_ed25519.pub 없음 — 수동으로 authorized_keys 설정 필요"
+fi
 
 # ============================================================
 # Post-launch: create worker user and bootstrap
@@ -224,8 +248,6 @@ docker exec "$container_name" bash -c '
   # Fix ownership of home directory and all files inside
   # read-only 마운트 파일(.ssh, .gitconfig)은 chown이 실패할 수 있으므로 || true
   chown -R "$CUSER":"$CUSER" /home/"$CUSER" 2>/dev/null || true
-  chown -R "$CUSER":"$CUSER" /sdk_release 2>/dev/null || true
-  chown -R "$CUSER":"$CUSER" /llvm-project 2>/dev/null || true
 
   # Auto-switch to worker when entering as root
   echo "if [ \"\$(id -u)\" = \"0\" ] && [ -t 0 ]; then exec su - $CUSER; fi" >> /root/.bashrc
