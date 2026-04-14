@@ -12,7 +12,6 @@ mount_dir="$SCRIPT_PATH"
 SETUP_LOG="$SCRIPT_PATH/setup.log"
 : > "$SETUP_LOG"
 image_name="192.168.57.60:8008/sdk_release/sdk_release:latest"
-CLAUDE_CONFIG_DIR="$HOME/.claude"
 CONTAINER_USER="worker"
 
 RED='\033[0;31m'
@@ -34,9 +33,8 @@ echo ""
 # --- 1. Files & directories ---
 echo "[1] 호스트 파일 및 디렉토리"
 
-REQUIRED_DIRS=("$HOME/.ssh" "$CLAUDE_CONFIG_DIR")
+REQUIRED_DIRS=("$HOME/.ssh")
 REQUIRED_FILES=(
-    "$HOME/.claude.json"
     "$SCRIPT_PATH/github_token.txt"
     "$SCRIPT_PATH/claude_token.txt"
 )
@@ -171,8 +169,6 @@ docker run -dit \
   --user root \
   -v "$mount_dir:/home/${CONTAINER_USER}" \
   -v "$HOME/.ssh:/home/${CONTAINER_USER}/.ssh:ro" \
-  -v "${CLAUDE_CONFIG_DIR}:/home/${CONTAINER_USER}/.claude" \
-  -v "$HOME/.claude.json:/home/${CONTAINER_USER}/.claude.json" \
   -e GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=accept-new" \
   -e GITHUB_TOKEN="$TOKEN" \
   -e CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_TOKEN" \
@@ -228,7 +224,6 @@ docker exec "$container_name" bash -c '
   # Fix ownership of home directory and all files inside
   # read-only 마운트 파일(.ssh, .gitconfig)은 chown이 실패할 수 있으므로 || true
   chown -R "$CUSER":"$CUSER" /home/"$CUSER" 2>/dev/null || true
-  chown -R "$CUSER":"$CUSER" /home/"$CUSER"/.claude 2>/dev/null || true
   chown -R "$CUSER":"$CUSER" /sdk_release 2>/dev/null || true
   chown -R "$CUSER":"$CUSER" /llvm-project 2>/dev/null || true
 
