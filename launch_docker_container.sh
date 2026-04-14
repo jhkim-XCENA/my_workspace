@@ -270,15 +270,8 @@ docker exec -u "$CONTAINER_USER" "$container_name" bash -c '
   fi
 ' >> "$SETUP_LOG" 2>&1
 
-# --- Install Claude Code inside container ---
-echo "Installing Claude Code inside container ..."
-docker exec -u "$CONTAINER_USER" "$container_name" bash -c '
-  curl -fsSL https://claude.ai/install.sh | bash
-  echo "export PATH=\"\$HOME/.local/bin:\$PATH\"" >> ~/.bashrc
-  export PATH="$HOME/.local/bin:$PATH"
-' >> "$SETUP_LOG" 2>&1
-
 # --- Run execute_with_source.sh as worker inside container ---
+# (Claude Code는 execute_with_source.sh에서 npm으로 버전 고정 설치)
 echo "Running environment setup inside container ..."
 docker exec -u "$CONTAINER_USER" "$container_name" bash -c 'cd ~ && source ./execute_with_source.sh'
 

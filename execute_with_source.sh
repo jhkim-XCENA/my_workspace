@@ -97,6 +97,19 @@ ensure_cmd node 22 install_node
 ensure_cmd glow 0 install_glow
 ensure_cmd gh 2 install_gh
 
+# Claude Code 설치 (npm으로 버전 고정)
+CLAUDE_CODE_VERSION="2.1.104"
+CURRENT_CLAUDE_VER="$(claude --version 2>/dev/null || true)"
+if [ "$CURRENT_CLAUDE_VER" = "$CLAUDE_CODE_VERSION (Claude Code)" ]; then
+    log "${GREEN}[skip]${NC} claude-code (v$CLAUDE_CODE_VERSION)"
+else
+    # native installer 바이너리가 있으면 제거 (npm 버전과 충돌 방지)
+    rm -f "$HOME/.local/bin/claude" 2>/dev/null
+    log "${YELLOW}[install]${NC} claude-code (v$CLAUDE_CODE_VERSION)"
+    $SUDO npm install -g "@anthropic-ai/claude-code@$CLAUDE_CODE_VERSION" >> "$SETUP_LOG" 2>&1
+    hash -r
+fi
+
 log ""
 log "Script directory: $SCRIPT_DIR"
 
