@@ -181,8 +181,19 @@ MU_KERNEL void bench_irem(long long* result, int N)
 
 ### 1c. 호스트 드라이버: `opbench_host.cpp`
 
+**Device 선택**: device 0 비정상 → **device 1 사용**. SDK 패턴(`test_device_utils.hpp`)을 따라 `XCENA_DEVICE_ID` env var 또는 `-d` CLI 옵션으로 지정:
+
+```cpp
+// 기본값: 1 (device 0 비정상)
+int deviceId = 1;
+const char* envDev = std::getenv("XCENA_DEVICE_ID");
+if (envDev) deviceId = atoi(envDev);
+// -d <id> 옵션이 있으면 override
 ```
-사용법: ./opbench_host -d <deviceId> [-m measure|bench] [-n <taskCount>] [-s <opCount>]
+
+```
+사용법: ./opbench_host [-d <deviceId>] [-m measure|bench] [-n <taskCount>] [-s <opCount>]
+  -d  device ID (기본값: 1, device 0 비정상)
   -m measure  : 사이클 측정 커널 실행, latency/release_at 표 출력
   -m bench    : 워크로드 커널 실행 (L1/L5/L7 비교용 타이밍)
 ```
@@ -215,7 +226,7 @@ export MU_LLVM_PATH=${LLVM_PATH:-/usr/local/mu_library/mu_llvm/$XCENA_LLVM_VERSI
 ```bash
 cd /work/example/opbench
 LLVM_PATH=/llvm-project/260414_cost_model ./build.sh   # L5 LLVM 사용 (HW 카운터에 무관)
-./opbench_host -m measure -d 0
+./opbench_host -m measure -d 1   # device 0 비정상, device 1 사용
 ```
 
 예상 측정 결과 (MX1 4-stage in-order, 1.1 GHz 기준):
@@ -298,7 +309,7 @@ diff /tmp/asm_l5.txt /tmp/asm_l7.txt
 ```bash
 for TAG in l1 l5 l7; do
     cp /tmp/mu_kernel_$TAG.mubin /work/example/dotprod/build/mu_kernel/mu_kernel.mubin
-    for ARGS in "-n 64 -s 1024" "-n 256 -s 1024" "-n 64 -s 4096"; do
+    for ARGS in "-d 1 -n 64 -s 1024" "-d 1 -n 256 -s 1024" "-d 1 -n 64 -s 4096"; do
         echo -n "$TAG $ARGS: "
         /work/example/dotprod/build/dotprod_with_ptr $ARGS
     done
