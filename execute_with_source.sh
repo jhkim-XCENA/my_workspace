@@ -177,7 +177,7 @@ log_done "git config ($(_elapsed $_t))"
 _t=$SECONDS
 log_install "nvim setup"
 cd "$SCRIPT_DIR/nvim" || return 1
-bash ./install.sh "$SETUP_LOG"
+TOTAL_START="$TOTAL_START" bash ./install.sh "$SETUP_LOG"
 cd "$SCRIPT_DIR"
 log_done "nvim setup ($(_elapsed $_t))"
 
