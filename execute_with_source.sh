@@ -188,7 +188,18 @@ else
   export PS1="\[\033[38;5;33m\][\A] \W\$(__git_branch)\$\[\033[0m\] "
 fi
 PROMPT_EOF
+# nvm 로드 (db-devenv 이미지: /opt/nvm에 node/claude 설치됨)
+cat >> "$BASHRC_FILE" << 'NVM_EOF'
+if [ -s "${NVM_DIR:-/opt/nvm}/nvm.sh" ]; then
+  export NVM_DIR="${NVM_DIR:-/opt/nvm}"
+  . "$NVM_DIR/nvm.sh"
+fi
+NVM_EOF
 echo "export GH_TOKEN=\"$TOKEN\"" >> "$BASHRC_FILE"
+echo "export GITHUB_TOKEN=\"$TOKEN\"" >> "$BASHRC_FILE"
+if [ -n "$CLAUDE_TOKEN" ]; then
+    echo "export CLAUDE_CODE_OAUTH_TOKEN=\"$CLAUDE_TOKEN\"" >> "$BASHRC_FILE"
+fi
 echo "bind 'set enable-bracketed-paste off' 2>/dev/null" >> "$BASHRC_FILE"
 echo "alias claude='claude --dangerously-skip-permissions'" >> "$BASHRC_FILE"
 echo "### jhkim-config end" >> "$BASHRC_FILE"
