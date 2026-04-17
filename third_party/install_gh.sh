@@ -27,5 +27,5 @@ fi
 $SUDO tar -xzf "$TARBALL" -C /tmp
 $SUDO cp /tmp/gh_${GH_VERSION}_linux_amd64/bin/gh "$INSTALL_DIR/bin/"
 $SUDO cp -r /tmp/gh_${GH_VERSION}_linux_amd64/share/ "$INSTALL_DIR/"
-rm -rf /tmp/gh_${GH_VERSION}_linux_amd64
+$SUDO rm -rf /tmp/gh_${GH_VERSION}_linux_amd64
 echo "gh v${GH_VERSION} installed from local tarball"

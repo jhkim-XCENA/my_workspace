@@ -15,6 +15,12 @@ if [[ $EUID -ne 0 ]]; then
     SUDO="sudo"
 fi
 
+# db-devenv 이미지의 nvm 로드 (node가 /opt/nvm에 설치되어 PATH에 없는 경우)
+if [ -s "${NVM_DIR:-/opt/nvm}/nvm.sh" ]; then
+    export NVM_DIR="${NVM_DIR:-/opt/nvm}"
+    . "$NVM_DIR/nvm.sh"
+fi
+
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
@@ -81,10 +87,10 @@ install_gh() {
 # --- Main ---
 log_section "Environment Setup (detail: $SETUP_LOG)"
 
-# apt update: node/gh/curl 모두 이미 있으면 skip
+# apt update: curl만 없을 때 실행 (node/gh는 tarball로 설치하므로 apt 불필요)
 _t=$SECONDS
-if command -v node &>/dev/null && command -v gh &>/dev/null && command -v curl &>/dev/null; then
-    log_skip "apt update (node, gh, curl 이미 설치됨)"
+if command -v curl &>/dev/null; then
+    log_skip "apt update (curl 이미 설치됨)"
 else
     log_install "apt update"
     $SUDO apt update -qq >> "$SETUP_LOG" 2>&1
