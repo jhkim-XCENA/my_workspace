@@ -81,16 +81,11 @@ ensure_npm() {
 # --- Install functions ---
 
 install_node() {
-    curl -fsSL https://deb.nodesource.com/setup_22.x | $SUDO -E bash -
-    $SUDO apt install -y nodejs
+    bash "$SCRIPT_DIR/third_party/install_node.sh"
 }
 
 install_gh() {
-    $SUDO mkdir -p /etc/apt/keyrings
-    curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | $SUDO tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | $SUDO tee /etc/apt/sources.list.d/github-cli-stable.list > /dev/null
-    $SUDO apt update -qq
-    $SUDO apt install -y gh
+    bash "$SCRIPT_DIR/third_party/install_gh.sh"
 }
 
 # --- Main ---
