@@ -275,6 +275,7 @@ fi
 docker run -dit \
   --name "$container_name" \
   --user root \
+  --network=host \
   -v "$mount_dir:/home/${CONTAINER_USER}" \
   -v "$HOME/.ssh:/home/${CONTAINER_USER}/.ssh" \
   -v "$session_dir/sdk_release:/sdk_release" \
