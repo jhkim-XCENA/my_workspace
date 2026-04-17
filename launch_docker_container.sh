@@ -6,12 +6,19 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     exit 1
 fi
 
+# --- Parse arguments ---
+LAUNCH_MODE="sdk_release"
+for arg in "$@"; do
+    case "$arg" in
+        --db-devenv) LAUNCH_MODE="db_devenv" ;;
+    esac
+done
+
 # --- Configuration ---
 SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 mount_dir="$SCRIPT_PATH"
 SETUP_LOG="$SCRIPT_PATH/setup.log"
 : > "$SETUP_LOG"
-image_name="192.168.57.60:8008/sdk_release/sdk_release:latest"
 CONTAINER_USER="worker"
 
 RED='\033[0;31m'
@@ -77,18 +84,6 @@ echo "[2] Docker"
 if command -v docker &>/dev/null; then pass "docker 명령어 존재"; else fail "docker가 설치되지 않음"; fi
 if docker info &>/dev/null 2>&1; then pass "docker 데몬 실행 중"; else fail "docker 데몬에 접근 불가"; fi
 
-if docker image inspect "$image_name" &>/dev/null 2>&1; then
-    pass "이미지 로컬에 존재"
-else
-    warn "이미지 로컬에 없음 (pull 시도)"
-    _t=$SECONDS
-    if docker pull "$image_name" >> "$SETUP_LOG" 2>&1; then
-        pass "이미지 pull 성공 ($(fmt_elapsed $_t))"
-    else
-        fail "이미지 pull 실패: $image_name"
-    fi
-fi
-
 # --- xcena_cli device detection ---
 DEVICE_COUNT=0
 USE_KVM=true
@@ -120,6 +115,53 @@ echo -e "${GREEN}Preflight 통과${NC}"
 echo ""
 
 # ============================================================
+# Mode-specific setup (db-devenv repo & image)
+# ============================================================
+if [ "$LAUNCH_MODE" = "db_devenv" ]; then
+    echo "=== db-devenv 모드 ==="
+    DB_DEVENV_DIR="$SCRIPT_PATH/db-devenv"
+
+    # db-devenv 레포 clone 또는 업데이트
+    if [ ! -d "$DB_DEVENV_DIR" ]; then
+        echo "Cloning db-devenv ..."
+        _t=$SECONDS
+        GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=accept-new" \
+            git clone "git@github.com:xcena-dev/db-devenv.git" "$DB_DEVENV_DIR" >> "$SETUP_LOG" 2>&1
+        echo "  [done] db-devenv clone ($(fmt_elapsed $_t))"
+    else
+        echo "Updating db-devenv ..."
+        _t=$SECONDS
+        git -C "$DB_DEVENV_DIR" pull >> "$SETUP_LOG" 2>&1
+        echo "  [done] db-devenv pull ($(fmt_elapsed $_t))"
+    fi
+
+    # db-devenv tag 계산으로 이미지 결정
+    echo "Computing devenv image tag ..."
+    eval "$(bash "$DB_DEVENV_DIR/scripts/docker-image-build.sh" registry tags 2>>"$SETUP_LOG")"
+    image_name="${DOCKER_REGISTRY}/${DEVENV_IMAGE_NAME}:${DEVENV_TAG}"
+    echo "  Image: $image_name"
+    echo ""
+else
+    image_name="192.168.57.60:8008/sdk_release/sdk_release:latest"
+fi
+
+# --- Docker 이미지 확인/pull ---
+echo "[3] Docker 이미지"
+if docker image inspect "$image_name" &>/dev/null 2>&1; then
+    pass "이미지 로컬에 존재: $image_name"
+else
+    warn "이미지 로컬에 없음 (pull 시도)"
+    _t=$SECONDS
+    if docker pull "$image_name" >> "$SETUP_LOG" 2>&1; then
+        pass "이미지 pull 성공 ($(fmt_elapsed $_t))"
+    else
+        fail "이미지 pull 실패: $image_name"
+        return 1
+    fi
+fi
+echo ""
+
+# ============================================================
 # Generate container name and session directory
 # ============================================================
 date_str=$(date +%y%m%d)
@@ -129,9 +171,15 @@ else
     mode="silicon"
 fi
 
-session_base="$SCRIPT_PATH/jhkim_${mode}"
-container_name="jhkim_${mode}_${date_str}"
-session_dir="${session_base}/${mode}_${date_str}"
+if [ "$LAUNCH_MODE" = "db_devenv" ]; then
+    type_prefix="db"
+else
+    type_prefix="sdk"
+fi
+
+session_base="$SCRIPT_PATH/jhkim_${type_prefix}_${mode}"
+container_name="jhkim_${type_prefix}_${mode}_${date_str}"
+session_dir="${session_base}/${type_prefix}_${mode}_${date_str}"
 
 if [ "$(docker ps -a -q -f name="^/${container_name}$")" ] || [ -d "$session_dir" ]; then
     suffix=1
@@ -180,17 +228,48 @@ GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=accept-new" \
 git -C "$session_dir/sdk_release/tools/pxcc" checkout origin/main >> "$SETUP_LOG" 2>&1
 echo "  [done] pxcc update ($(fmt_elapsed $_t))"
 
+# --- db-devenv 모드: microbenchmark clone + submodule ---
+if [ "$LAUNCH_MODE" = "db_devenv" ]; then
+    clone_if_missing "$session_dir/microbenchmark" "xcena-dev/microbenchmark"
+
+    echo "Updating submodules (microbenchmark) ..."
+    _t=$SECONDS
+    GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=accept-new" \
+        git -C "$session_dir/microbenchmark" submodule update --init --recursive >> "$SETUP_LOG" 2>&1
+    echo "  [done] microbenchmark submodule update ($(fmt_elapsed $_t))"
+fi
+
 # ============================================================
 # Launch container
 # ============================================================
-echo "Launching container: $container_name (${mode} 모드) ..."
+echo "Launching container: $container_name (${type_prefix}/${mode} 모드) ..."
 _t=$SECONDS
 
 DOCKER_KVM_OPTS=()
-if [ "$USE_KVM" = true ]; then
+if [ "$LAUNCH_MODE" = "db_devenv" ]; then
+    # db-devenv 가이드라인: 항상 privileged + SYS_ADMIN
+    DOCKER_KVM_OPTS+=(--privileged --cap-add=SYS_ADMIN)
+elif [ "$USE_KVM" = true ]; then
     DOCKER_KVM_OPTS+=(--device=/dev/kvm --cap-add=SYS_ADMIN)
 else
     DOCKER_KVM_OPTS+=(--privileged)
+fi
+
+# db-devenv 추가 볼륨/옵션
+DOCKER_EXTRA_OPTS=()
+if [ "$LAUNCH_MODE" = "db_devenv" ]; then
+    DOCKER_EXTRA_OPTS+=(
+        --entrypoint bash
+        -v "$session_dir/microbenchmark:/microbenchmark"
+        -v "$DB_DEVENV_DIR/scripts/runtime:/opt/db-devenv/runtime"
+        -v "$DB_DEVENV_DIR/config/hooks:/opt/db-devenv/hooks"
+    )
+    # Cargo 캐시 (호스트 디렉토리 사전 생성)
+    mkdir -p "$HOME/.cargo/registry" "$HOME/.cargo/git"
+    DOCKER_EXTRA_OPTS+=(
+        -v "$HOME/.cargo/registry:/home/${CONTAINER_USER}/.cargo/registry"
+        -v "$HOME/.cargo/git:/home/${CONTAINER_USER}/.cargo/git"
+    )
 fi
 
 docker run -dit \
@@ -208,6 +287,7 @@ docker run -dit \
   -e LANG=C.UTF-8 \
   -e LC_ALL=C.UTF-8 \
   "${DOCKER_KVM_OPTS[@]}" \
+  "${DOCKER_EXTRA_OPTS[@]}" \
   "$image_name" >> "$SETUP_LOG" 2>&1
 echo "  [done] docker run ($(fmt_elapsed $_t))"
 
@@ -275,8 +355,13 @@ echo "  [done] worker user setup ($(fmt_elapsed $_t))"
 
 # --- Switch git remotes to SSH inside container ---
 echo "Switching git remotes to SSH ..."
+if [ "$LAUNCH_MODE" = "db_devenv" ]; then
+    GIT_REPOS="/llvm-project /sdk_release /sdk_release/tools/pxcc /microbenchmark"
+else
+    GIT_REPOS="/llvm-project /sdk_release /sdk_release/tools/pxcc"
+fi
 docker exec -u "$CONTAINER_USER" "$container_name" bash -c '
-  for repo in /llvm-project /sdk_release /sdk_release/tools/pxcc; do
+  for repo in '"$GIT_REPOS"'; do
     if [ -d "$repo/.git" ] || [ -f "$repo/.git" ]; then
       url=$(git -C "$repo" remote get-url origin 2>/dev/null || true)
       if [ -n "$url" ]; then
@@ -320,13 +405,19 @@ docker exec -u "$CONTAINER_USER" "$container_name" bash -c 'cd ~ && source ./exe
 echo "  [done] env setup ($(fmt_elapsed $_t))"
 
 # ============================================================
-# Register docker_exec alias
+# Register docker alias
 # ============================================================
 BASHRC_FILE="$HOME/.bashrc"
-ALIAS_LINE="alias docker_exec='docker exec -u $CONTAINER_USER -w /home/$CONTAINER_USER -it $container_name bash'"
 
-if grep -q "^alias docker_exec=" "$BASHRC_FILE"; then
-    sed -i "s|^alias docker_exec=.*|${ALIAS_LINE}|" "$BASHRC_FILE"
+if [ "$LAUNCH_MODE" = "db_devenv" ]; then
+    ALIAS_NAME="docker_db_exec"
+else
+    ALIAS_NAME="docker_exec"
+fi
+ALIAS_LINE="alias ${ALIAS_NAME}='docker exec -u $CONTAINER_USER -w /home/$CONTAINER_USER -it $container_name bash'"
+
+if grep -q "^alias ${ALIAS_NAME}=" "$BASHRC_FILE"; then
+    sed -i "s|^alias ${ALIAS_NAME}=.*|${ALIAS_LINE}|" "$BASHRC_FILE"
 else
     echo "$ALIAS_LINE" >> "$BASHRC_FILE"
 fi
@@ -337,8 +428,8 @@ source "$BASHRC_FILE"
 # Output
 # ============================================================
 echo ""
-echo "Launched container: $container_name (total: $(fmt_elapsed $TOTAL_START))"
+echo "Launched container: $container_name (${type_prefix}/${mode}, total: $(fmt_elapsed $TOTAL_START))"
 echo "  Detail log: $SETUP_LOG"
 echo ""
-echo "  docker_exec 를 실행하여 컨테이너에 접속하세요."
+echo "  ${ALIAS_NAME} 를 실행하여 컨테이너에 접속하세요."
 echo ""
