@@ -23,6 +23,15 @@ NC='\033[0m'
 log() { echo -e "$@"; }
 log_detail() { echo "$@" >> "$SETUP_LOG" 2>&1; }
 
+# --- Timing helpers ---
+TOTAL_START=$SECONDS
+fmt_elapsed() {
+    local dur=$((SECONDS - $1))
+    local mins=$((dur / 60))
+    local secs=$((dur % 60))
+    printf "%dm %ds" "$mins" "$secs"
+}
+
 # --- Install helpers ---
 
 # ensure_cmd <command> <min_major_version> <install_function>
@@ -38,7 +47,9 @@ ensure_cmd() {
         fi
     fi
     log "${YELLOW}[install]${NC} $cmd (requires v$min_ver+)"
+    local _t=$SECONDS
     "$install_fn" >> "$SETUP_LOG" 2>&1
+    log "  ${GREEN}[done]${NC} $cmd ($(fmt_elapsed $_t))"
 }
 
 # ensure_pkg <package_name> [command_name]
@@ -49,7 +60,9 @@ ensure_pkg() {
         return 0
     fi
     log "${YELLOW}[install]${NC} $pkg"
+    local _t=$SECONDS
     $SUDO apt install -y "$pkg" >> "$SETUP_LOG" 2>&1
+    log "  ${GREEN}[done]${NC} $pkg ($(fmt_elapsed $_t))"
 }
 
 # ensure_npm <package_name>
@@ -60,7 +73,9 @@ ensure_npm() {
         return 0
     fi
     log "${YELLOW}[install]${NC} npm:$pkg"
+    local _t=$SECONDS
     npm install -g "$pkg" >> "$SETUP_LOG" 2>&1
+    log "  ${GREEN}[done]${NC} npm:$pkg ($(fmt_elapsed $_t))"
 }
 
 # --- Install functions ---
@@ -90,7 +105,9 @@ install_gh() {
 log "=== Environment Setup (detail: $SETUP_LOG) ==="
 
 log "Updating apt..."
+_t=$SECONDS
 $SUDO apt update -qq >> "$SETUP_LOG" 2>&1
+log "  ${GREEN}[done]${NC} apt update ($(fmt_elapsed $_t))"
 
 ensure_pkg curl
 ensure_cmd node 22 install_node
@@ -106,8 +123,10 @@ else
     # native installer 바이너리가 있으면 제거 (npm 버전과 충돌 방지)
     rm -f "$HOME/.local/bin/claude" 2>/dev/null
     log "${YELLOW}[install]${NC} claude-code (v$CLAUDE_CODE_VERSION)"
+    _t=$SECONDS
     $SUDO npm install -g "@anthropic-ai/claude-code@$CLAUDE_CODE_VERSION" >> "$SETUP_LOG" 2>&1
     hash -r
+    log "  ${GREEN}[done]${NC} claude-code ($(fmt_elapsed $_t))"
 fi
 
 log ""
@@ -154,9 +173,11 @@ fi
 
 # nvim 설치
 log "Running nvim setup..."
+_t=$SECONDS
 cd "$SCRIPT_DIR/nvim" || return 1
 bash ./install.sh "$SETUP_LOG"
 cd "$SCRIPT_DIR"
+log "  ${GREEN}[done]${NC} nvim setup ($(fmt_elapsed $_t))"
 
 # --- .bashrc 설정 ---
 BASHRC_FILE="$HOME/.bashrc"
@@ -197,4 +218,4 @@ echo "### jhkim-config end" >> "$BASHRC_FILE"
 
 log ""
 source ~/.bashrc
-log "${GREEN}Setup complete!${NC}"
+log "${GREEN}Setup complete!${NC} (total: $(fmt_elapsed $TOTAL_START))"
