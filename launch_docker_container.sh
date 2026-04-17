@@ -24,30 +24,32 @@ CONTAINER_USER="worker"
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
+GRAY='\033[0;90m'
 NC='\033[0m'
 
-# --- Timing helpers ---
+# --- Timing & logging helpers ---
 TOTAL_START=$SECONDS
-fmt_elapsed() {
-    local dur=$((SECONDS - $1))
-    local mins=$((dur / 60))
-    local secs=$((dur % 60))
-    printf "%dm %ds" "$mins" "$secs"
-}
+_ts() { printf "${GRAY}[%02d:%02d]${NC}" $(( (SECONDS - TOTAL_START) / 60 )) $(( (SECONDS - TOTAL_START) % 60 )); }
+_elapsed() { local d=$((SECONDS - $1)); printf "%dm %ds" $((d/60)) $((d%60)); }
+
+log_done()    { echo -e "$(_ts)${GREEN}[done]${NC} $1"; }
+log_skip()    { echo -e "$(_ts)${GREEN}[skip]${NC} $1"; }
+log_install() { echo -e "$(_ts)${YELLOW}[install]${NC} $1"; }
+log_info()    { echo -e "$(_ts) $1"; }
+log_pass()    { echo -e "$(_ts)${GREEN}[ok]${NC} $1"; }
+log_fail()    { echo -e "$(_ts)${RED}[fail]${NC} $1"; ERRORS=$((ERRORS + 1)); }
+log_warn()    { echo -e "$(_ts)${YELLOW}[warn]${NC} $1"; }
+log_section() { echo -e "\n$(_ts) === $1 ==="; }
 
 # ============================================================
 # Preflight check
 # ============================================================
 ERRORS=0
-pass() { echo -e "  ${GREEN}✔${NC} $1"; }
-fail() { echo -e "  ${RED}✘${NC} $1"; ERRORS=$((ERRORS + 1)); }
-warn() { echo -e "  ${YELLOW}!${NC} $1"; }
 
-echo "=== Preflight check ==="
-echo ""
+log_section "Preflight check"
 
 # --- 1. Files & directories ---
-echo "[1] 호스트 파일 및 디렉토리"
+log_info "[1] 호스트 파일 및 디렉토리"
 
 REQUIRED_DIRS=("$HOME/.ssh")
 REQUIRED_FILES=(
@@ -56,110 +58,102 @@ REQUIRED_FILES=(
 )
 
 for dir in "${REQUIRED_DIRS[@]}"; do
-    if [ -d "$dir" ]; then pass "$dir"; else fail "$dir 디렉토리 없음"; fi
+    if [ -d "$dir" ]; then log_pass "$dir"; else log_fail "$dir 디렉토리 없음"; fi
 done
 for file in "${REQUIRED_FILES[@]}"; do
-    if [ -e "$file" ]; then pass "$file"; else fail "$file 파일 없음"; fi
+    if [ -e "$file" ]; then log_pass "$file"; else log_fail "$file 파일 없음"; fi
 done
 
 TOKEN="$(cat "$SCRIPT_PATH/github_token.txt" 2>/dev/null | tr -d '[:space:]')"
 if [ -n "$TOKEN" ]; then
-    pass "github_token.txt 내용 있음"
+    log_pass "github_token.txt 내용 있음"
 else
-    fail "github_token.txt 파일이 없거나 비어있음"
+    log_fail "github_token.txt 파일이 없거나 비어있음"
 fi
 
 CLAUDE_TOKEN="$(cat "$SCRIPT_PATH/claude_token.txt" 2>/dev/null | tr -d '[:space:]')"
 if [ -n "$CLAUDE_TOKEN" ]; then
-    pass "claude_token.txt 내용 있음"
+    log_pass "claude_token.txt 내용 있음"
 else
-    fail "claude_token.txt 파일이 없거나 비어있음"
+    log_fail "claude_token.txt 파일이 없거나 비어있음"
 fi
 
-echo ""
-
 # --- 2. Docker ---
-echo "[2] Docker"
+log_info "[2] Docker"
 
-if command -v docker &>/dev/null; then pass "docker 명령어 존재"; else fail "docker가 설치되지 않음"; fi
-if docker info &>/dev/null 2>&1; then pass "docker 데몬 실행 중"; else fail "docker 데몬에 접근 불가"; fi
+if command -v docker &>/dev/null; then log_pass "docker 명령어 존재"; else log_fail "docker가 설치되지 않음"; fi
+if docker info &>/dev/null 2>&1; then log_pass "docker 데몬 실행 중"; else log_fail "docker 데몬에 접근 불가"; fi
 
 # --- xcena_cli device detection ---
 DEVICE_COUNT=0
 USE_KVM=true
 if command -v xcena_cli &>/dev/null; then
     DEVICE_COUNT=$(xcena_cli num-device 2>/dev/null | grep -oP 'Number of devices : \K[0-9]+' || echo "0")
-    pass "xcena_cli 존재 (디바이스 ${DEVICE_COUNT}개 감지)"
+    log_pass "xcena_cli 존재 (디바이스 ${DEVICE_COUNT}개 감지)"
     if [ "$DEVICE_COUNT" -ge 1 ]; then
         USE_KVM=false
-        warn "디바이스 ${DEVICE_COUNT}개 감지 → silicon 모드 (--device=/dev/kvm, --cap-add=SYS_ADMIN 없이 실행)"
+        log_warn "디바이스 ${DEVICE_COUNT}개 감지 → silicon 모드"
     else
-        pass "디바이스 없음 → qemu 모드 (/dev/kvm 사용)"
+        log_pass "디바이스 없음 → qemu 모드 (/dev/kvm 사용)"
     fi
 else
-    warn "xcena_cli 없음 → qemu 모드로 진행"
+    log_warn "xcena_cli 없음 → qemu 모드로 진행"
 fi
 
 if [ "$USE_KVM" = true ]; then
-    if [ -e /dev/kvm ]; then pass "/dev/kvm 존재"; else fail "/dev/kvm 없음"; fi
+    if [ -e /dev/kvm ]; then log_pass "/dev/kvm 존재"; else log_fail "/dev/kvm 없음"; fi
 fi
-
-echo ""
 
 # --- Preflight result ---
 if [ "$ERRORS" -ne 0 ]; then
-    echo -e "${RED}${ERRORS}개 항목 미충족. 위 내용을 확인하세요.${NC}"
+    log_fail "${ERRORS}개 항목 미충족. 위 내용을 확인하세요."
     return 1
 fi
-echo -e "${GREEN}Preflight 통과${NC}"
-echo ""
+log_pass "Preflight 통과"
 
 # ============================================================
 # Mode-specific setup (db-devenv repo & image)
 # ============================================================
 if [ "$LAUNCH_MODE" = "db_devenv" ]; then
-    echo "=== db-devenv 모드 ==="
+    log_section "db-devenv 모드"
     DB_DEVENV_DIR="$SCRIPT_PATH/db-devenv"
 
     # db-devenv 레포 clone 또는 업데이트
+    _t=$SECONDS
     if [ ! -d "$DB_DEVENV_DIR" ]; then
-        echo "Cloning db-devenv ..."
-        _t=$SECONDS
+        log_install "db-devenv clone"
         GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=accept-new" \
             git clone "git@github.com:xcena-dev/db-devenv.git" "$DB_DEVENV_DIR" >> "$SETUP_LOG" 2>&1
-        echo "  [done] db-devenv clone ($(fmt_elapsed $_t))"
+        log_done "db-devenv clone ($(_elapsed $_t))"
     else
-        echo "Updating db-devenv ..."
-        _t=$SECONDS
+        log_install "db-devenv pull"
         git -C "$DB_DEVENV_DIR" pull >> "$SETUP_LOG" 2>&1
-        echo "  [done] db-devenv pull ($(fmt_elapsed $_t))"
+        log_done "db-devenv pull ($(_elapsed $_t))"
     fi
 
     # db-devenv tag 계산으로 이미지 결정
-    echo "Computing devenv image tag ..."
+    log_info "Computing devenv image tag ..."
     eval "$(bash "$DB_DEVENV_DIR/scripts/docker-image-build.sh" registry tags 2>>"$SETUP_LOG")"
     image_name="${DOCKER_REGISTRY}/${DEVENV_IMAGE_NAME}:${DEVENV_TAG}"
-    echo "  Image: $image_name"
-    echo ""
+    log_info "Image: $image_name"
 else
     image_name="192.168.57.60:8008/sdk_release/sdk_release:latest"
 fi
 
 # --- Docker 이미지 확인/pull ---
-echo "[3] Docker 이미지"
+log_info "[3] Docker 이미지"
 if docker image inspect "$image_name" &>/dev/null 2>&1; then
-    pass "이미지 로컬에 존재: $image_name"
+    log_pass "이미지 로컬에 존재: $image_name"
 else
-    warn "이미지 로컬에 없음 (pull 시도)"
+    log_warn "이미지 로컬에 없음 (pull 시도)"
     _t=$SECONDS
     if docker pull "$image_name" >> "$SETUP_LOG" 2>&1; then
-        pass "이미지 pull 성공 ($(fmt_elapsed $_t))"
+        log_done "이미지 pull ($(_elapsed $_t))"
     else
-        fail "이미지 pull 실패: $image_name"
+        log_fail "이미지 pull 실패: $image_name"
         return 1
     fi
 fi
-echo ""
 
 # ============================================================
 # Generate container name and session directory
@@ -191,22 +185,24 @@ if [ "$(docker ps -a -q -f name="^/${container_name}$")" ] || [ -d "$session_dir
 fi
 
 mkdir -p "$session_dir"
-echo "Session directory: $session_dir"
+log_info "Session: $session_dir"
 
 # ============================================================
 # Clone repos (shallow, SSH)
 # ============================================================
+log_section "Clone repos"
+
 clone_if_missing() {
     local dir="$1"
     local repo="$2"
     if [ ! -d "$dir" ]; then
-        echo "Cloning $repo ..."
+        log_install "$repo"
         local _t=$SECONDS
         GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=accept-new" \
             git clone --depth 1 "git@github.com:${repo}.git" "$dir" >> "$SETUP_LOG" 2>&1
-        echo "  [done] $repo ($(fmt_elapsed $_t))"
+        log_done "$repo ($(_elapsed $_t))"
     else
-        echo "[skip] $repo (already cloned)"
+        log_skip "$repo (already cloned)"
     fi
 }
 
@@ -214,35 +210,35 @@ clone_if_missing "$session_dir/sdk_release"   "xcena-dev/sdk_release"
 clone_if_missing "$session_dir/llvm-project"  "xcena-dev/llvm-project-fork"
 
 # --- Update submodules ---
-echo "Updating submodules (sdk_release/tools/pxcc) ..."
 _t=$SECONDS
+log_install "submodule: sdk_release/tools/pxcc"
 GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=accept-new" \
     git -C "$session_dir/sdk_release" submodule update --init tools/pxcc >> "$SETUP_LOG" 2>&1
-echo "  [done] submodule update ($(fmt_elapsed $_t))"
+log_done "submodule: pxcc ($(_elapsed $_t))"
 
 # --- Advance pxcc to latest origin/main (submodule pinned commit 무시) ---
-echo "Updating pxcc to latest origin/main ..."
 _t=$SECONDS
+log_install "pxcc → origin/main"
 GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=accept-new" \
     git -C "$session_dir/sdk_release/tools/pxcc" fetch origin main >> "$SETUP_LOG" 2>&1
 git -C "$session_dir/sdk_release/tools/pxcc" checkout origin/main >> "$SETUP_LOG" 2>&1
-echo "  [done] pxcc update ($(fmt_elapsed $_t))"
+log_done "pxcc → origin/main ($(_elapsed $_t))"
 
 # --- db-devenv 모드: microbenchmark clone + submodule ---
 if [ "$LAUNCH_MODE" = "db_devenv" ]; then
     clone_if_missing "$session_dir/microbenchmark" "xcena-dev/microbenchmark"
 
-    echo "Updating submodules (microbenchmark) ..."
     _t=$SECONDS
+    log_install "submodule: microbenchmark (recursive)"
     GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=accept-new" \
         git -C "$session_dir/microbenchmark" submodule update --init --recursive >> "$SETUP_LOG" 2>&1
-    echo "  [done] microbenchmark submodule update ($(fmt_elapsed $_t))"
+    log_done "submodule: microbenchmark ($(_elapsed $_t))"
 fi
 
 # ============================================================
 # Launch container
 # ============================================================
-echo "Launching container: $container_name (${type_prefix}/${mode} 모드) ..."
+log_section "Launch container ($container_name, ${type_prefix}/${mode})"
 _t=$SECONDS
 
 DOCKER_KVM_OPTS=()
@@ -290,72 +286,98 @@ docker run -dit \
   "${DOCKER_KVM_OPTS[@]}" \
   "${DOCKER_EXTRA_OPTS[@]}" \
   "$image_name" >> "$SETUP_LOG" 2>&1
-echo "  [done] docker run ($(fmt_elapsed $_t))"
+log_done "docker run ($(_elapsed $_t))"
 
 # --- 컨테이너 → 호스트 SSH 허용 (공개키를 호스트 authorized_keys에 등록) ---
-echo "Enabling container-to-host SSH ..."
 PUBKEY=$(cat "$HOME/.ssh/id_ed25519.pub" 2>/dev/null || true)
 if [ -n "$PUBKEY" ]; then
     AUTH_KEYS="$HOME/.ssh/authorized_keys"
     touch "$AUTH_KEYS" && chmod 600 "$AUTH_KEYS"
     if ! grep -qF "$PUBKEY" "$AUTH_KEYS" 2>/dev/null; then
         echo "$PUBKEY" >> "$AUTH_KEYS"
-        pass "public key → 호스트 authorized_keys 등록 완료"
+        log_done "host SSH authorized_keys 등록"
     else
-        pass "public key 이미 authorized_keys에 있음"
+        log_skip "host SSH authorized_keys (이미 등록됨)"
     fi
 else
-    warn "id_ed25519.pub 없음 — 수동으로 authorized_keys 설정 필요"
+    log_warn "id_ed25519.pub 없음 — 수동으로 authorized_keys 설정 필요"
 fi
 
 # ============================================================
-# Post-launch: create worker user and bootstrap
+# Post-launch: create worker user and bootstrap (단계별 타이밍)
 # ============================================================
-echo "Setting up $CONTAINER_USER user ..."
+log_section "Container setup"
+
+# --- 1. User 생성 ---
 _t=$SECONDS
+log_install "user 생성 (worker, UID=$(id -u))"
 docker exec "$container_name" bash -c '
   CUSER="worker"
   HOST_UID='"$(id -u)"'
-
-  # Remove existing user with same UID (e.g. ubuntu:1000) to avoid conflict
   EXISTING=$(getent passwd "$HOST_UID" | cut -d: -f1 || true)
   if [ -n "$EXISTING" ] && [ "$EXISTING" != "$CUSER" ]; then
     userdel "$EXISTING" 2>/dev/null || true
   fi
-
-  # Create user with host UID to match bind mount file ownership
   if ! id "$CUSER" &>/dev/null; then
     useradd -m -s /bin/bash -u "$HOST_UID" "$CUSER"
   fi
-
-  # Ensure .bashrc and .profile exist (useradd skips skel if home already exists)
   for f in .bashrc .profile; do
     if [ ! -f /home/"$CUSER"/$f ]; then
-      cp /etc/skel/$f /home/"$CUSER"/$f 2>/dev/null \
-        || touch /home/"$CUSER"/$f
+      cp /etc/skel/$f /home/"$CUSER"/$f 2>/dev/null || touch /home/"$CUSER"/$f
     fi
   done
+' >> "$SETUP_LOG" 2>&1
+log_done "user 생성 ($(_elapsed $_t))"
 
-  # Install essential tools before user setup runs
-  apt-get update -qq
-  apt-get install -y -qq curl sudo git 2>/dev/null
+# --- 2. apt-get: curl, sudo, git (이미 있으면 skip) ---
+_t=$SECONDS
+APT_NEEDED=$(docker exec "$container_name" bash -c '
+  missing=0
+  command -v curl &>/dev/null || missing=1
+  command -v sudo &>/dev/null || missing=1
+  command -v git  &>/dev/null || missing=1
+  echo $missing
+')
+if [ "$APT_NEEDED" = "0" ]; then
+    log_skip "apt (curl, sudo, git 이미 설치됨)"
+else
+    log_install "apt update + install (curl, sudo, git)"
+    docker exec "$container_name" bash -c '
+      apt-get update -qq
+      apt-get install -y -qq curl sudo git 2>/dev/null
+    ' >> "$SETUP_LOG" 2>&1
+    log_done "apt install ($(_elapsed $_t))"
+fi
 
-  # Grant passwordless sudo
+# --- 3. sudo 설정 ---
+_t=$SECONDS
+log_install "sudo 설정"
+docker exec "$container_name" bash -c '
+  CUSER="worker"
   usermod -aG sudo "$CUSER" 2>/dev/null || true
   echo "${CUSER} ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/"$CUSER"
   chmod 440 /etc/sudoers.d/"$CUSER"
-
-  # Fix ownership of home directory and all files inside
-  # read-only 마운트 파일(.ssh, .gitconfig)은 chown이 실패할 수 있으므로 || true
-  chown -R "$CUSER":"$CUSER" /home/"$CUSER" 2>/dev/null || true
-
-  # Auto-switch to worker when entering as root
-  echo "if [ \"\$(id -u)\" = \"0\" ] && [ -t 0 ]; then exec su - $CUSER; fi" >> /root/.bashrc
 ' >> "$SETUP_LOG" 2>&1
-echo "  [done] worker user setup ($(fmt_elapsed $_t))"
+log_done "sudo 설정 ($(_elapsed $_t))"
+
+# --- 4. chown (home directory) ---
+_t=$SECONDS
+log_install "chown /home/$CONTAINER_USER"
+docker exec "$container_name" bash -c '
+  chown -R worker:worker /home/worker 2>/dev/null || true
+' >> "$SETUP_LOG" 2>&1
+log_done "chown ($(_elapsed $_t))"
+
+# --- 5. root → worker 자동 전환 ---
+_t=$SECONDS
+docker exec "$container_name" bash -c '
+  echo "if [ \"\$(id -u)\" = \"0\" ] && [ -t 0 ]; then exec su - worker; fi" >> /root/.bashrc
+' >> "$SETUP_LOG" 2>&1
+log_done "root auto-switch ($(_elapsed $_t))"
 
 # --- Switch git remotes to SSH inside container ---
-echo "Switching git remotes to SSH ..."
+_t=$SECONDS
+log_install "git remote → SSH"
 if [ "$LAUNCH_MODE" = "db_devenv" ]; then
     GIT_REPOS="/llvm-project /sdk_release /sdk_release/tools/pxcc /microbenchmark"
 else
@@ -369,25 +391,25 @@ docker exec -u "$CONTAINER_USER" "$container_name" bash -c '
         ssh_url=$(echo "$url" | sed -E "s|https://[^/]*github.com/|git@github.com:|")
         if [ "$url" != "$ssh_url" ]; then
           git -C "$repo" remote set-url origin "$ssh_url"
-          echo "  $repo: $ssh_url"
         fi
       fi
     fi
   done
 ' >> "$SETUP_LOG" 2>&1
+log_done "git remote → SSH ($(_elapsed $_t))"
 
 # --- Set git config inside container ---
-echo "Setting git config ..."
+_t=$SECONDS
+log_install "git config"
 docker exec -u "$CONTAINER_USER" "$container_name" bash -c '
   git config --global user.name "jhkim-XCENA"
   git config --global user.email "jeongho.kim@xcena.com"
-  # Use GITHUB_TOKEN for HTTPS push (SSH key may belong to a different account)
   git config --global credential.helper \
     "!f() { echo username=x-access-token; echo password=\$GITHUB_TOKEN; }; f"
 ' >> "$SETUP_LOG" 2>&1
+log_done "git config ($(_elapsed $_t))"
 
 # --- Switch home repo remote to HTTPS (SSH key identity mismatch) ---
-echo "Switching home repo to HTTPS ..."
 docker exec -u "$CONTAINER_USER" "$container_name" bash -c '
   cd ~ && url=$(git remote get-url origin 2>/dev/null || true)
   if [ -n "$url" ]; then
@@ -399,11 +421,10 @@ docker exec -u "$CONTAINER_USER" "$container_name" bash -c '
 ' >> "$SETUP_LOG" 2>&1
 
 # --- Run execute_with_source.sh as worker inside container ---
-# (Claude Code는 execute_with_source.sh에서 npm으로 버전 고정 설치)
-echo "Running environment setup inside container ..."
+log_section "Environment setup (execute_with_source.sh)"
 _t=$SECONDS
 docker exec -u "$CONTAINER_USER" "$container_name" bash -c 'cd ~ && source ./execute_with_source.sh'
-echo "  [done] env setup ($(fmt_elapsed $_t))"
+log_done "execute_with_source.sh ($(_elapsed $_t))"
 
 # ============================================================
 # Register docker alias
@@ -429,8 +450,8 @@ source "$BASHRC_FILE"
 # Output
 # ============================================================
 echo ""
-echo "Launched container: $container_name (${type_prefix}/${mode}, total: $(fmt_elapsed $TOTAL_START))"
-echo "  Detail log: $SETUP_LOG"
+log_done "Complete: $container_name (${type_prefix}/${mode}, total: $(_elapsed $TOTAL_START))"
+log_info "Detail log: $SETUP_LOG"
 echo ""
-echo "  ${ALIAS_NAME} 를 실행하여 컨테이너에 접속하세요."
+log_info "${ALIAS_NAME} 를 실행하여 컨테이너에 접속하세요."
 echo ""

@@ -18,19 +18,22 @@ fi
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
+GRAY='\033[0;90m'
 NC='\033[0m'
 
-log() { echo -e "$@"; }
-log_detail() { echo "$@" >> "$SETUP_LOG" 2>&1; }
-
-# --- Timing helpers ---
+# --- Timing & logging helpers (launch_docker_container.sh와 동일 포맷) ---
 TOTAL_START=$SECONDS
-fmt_elapsed() {
-    local dur=$((SECONDS - $1))
-    local mins=$((dur / 60))
-    local secs=$((dur % 60))
-    printf "%dm %ds" "$mins" "$secs"
-}
+_ts() { printf "${GRAY}[%02d:%02d]${NC}" $(( (SECONDS - TOTAL_START) / 60 )) $(( (SECONDS - TOTAL_START) % 60 )); }
+_elapsed() { local d=$((SECONDS - $1)); printf "%dm %ds" $((d/60)) $((d%60)); }
+
+log_done()    { echo -e "$(_ts)${GREEN}[done]${NC} $1"; }
+log_skip()    { echo -e "$(_ts)${GREEN}[skip]${NC} $1"; }
+log_install() { echo -e "$(_ts)${YELLOW}[install]${NC} $1"; }
+log_info()    { echo -e "$(_ts) $1"; }
+log_pass()    { echo -e "$(_ts)${GREEN}[ok]${NC} $1"; }
+log_fail()    { echo -e "$(_ts)${RED}[fail]${NC} $1"; }
+log_warn()    { echo -e "$(_ts)${YELLOW}[warn]${NC} $1"; }
+log_section() { echo -e "\n$(_ts) === $1 ==="; }
 
 # --- Install helpers ---
 
@@ -42,40 +45,27 @@ ensure_cmd() {
         cur_ver="$("$cmd" --version 2>/dev/null | grep -oP '[0-9]+\.[0-9]+' | head -1)"
         local cur_major="${cur_ver%%.*}"
         if [ -n "$cur_major" ] && [ "$cur_major" -ge "$min_ver" ] 2>/dev/null; then
-            log "${GREEN}[skip]${NC} $cmd (v$cur_ver >= v$min_ver)"
+            log_skip "$cmd (v$cur_ver >= v$min_ver)"
             return 0
         fi
     fi
-    log "${YELLOW}[install]${NC} $cmd (requires v$min_ver+)"
+    log_install "$cmd (requires v$min_ver+)"
     local _t=$SECONDS
     "$install_fn" >> "$SETUP_LOG" 2>&1
-    log "  ${GREEN}[done]${NC} $cmd ($(fmt_elapsed $_t))"
+    log_done "$cmd ($(_elapsed $_t))"
 }
 
 # ensure_pkg <package_name> [command_name]
 ensure_pkg() {
     local pkg="$1" cmd="${2:-$1}"
-    if command -v "$cmd" &> /dev/null || dpkg -s "$pkg" &> /dev/null; then
-        log "${GREEN}[skip]${NC} $pkg"
+    if command -v "$cmd" &> /dev/null || dpkg -s "$pkg" &> /dev/null 2>&1; then
+        log_skip "$pkg"
         return 0
     fi
-    log "${YELLOW}[install]${NC} $pkg"
+    log_install "$pkg"
     local _t=$SECONDS
     $SUDO apt install -y "$pkg" >> "$SETUP_LOG" 2>&1
-    log "  ${GREEN}[done]${NC} $pkg ($(fmt_elapsed $_t))"
-}
-
-# ensure_npm <package_name>
-ensure_npm() {
-    local pkg="$1"
-    if npm list -g "$pkg" &> /dev/null; then
-        log "${GREEN}[skip]${NC} npm:$pkg"
-        return 0
-    fi
-    log "${YELLOW}[install]${NC} npm:$pkg"
-    local _t=$SECONDS
-    npm install -g "$pkg" >> "$SETUP_LOG" 2>&1
-    log "  ${GREEN}[done]${NC} npm:$pkg ($(fmt_elapsed $_t))"
+    log_done "$pkg ($(_elapsed $_t))"
 }
 
 # --- Install functions ---
@@ -89,12 +79,17 @@ install_gh() {
 }
 
 # --- Main ---
-log "=== Environment Setup (detail: $SETUP_LOG) ==="
+log_section "Environment Setup (detail: $SETUP_LOG)"
 
-log "Updating apt..."
+# apt update: node/gh/curl 모두 이미 있으면 skip
 _t=$SECONDS
-$SUDO apt update -qq >> "$SETUP_LOG" 2>&1
-log "  ${GREEN}[done]${NC} apt update ($(fmt_elapsed $_t))"
+if command -v node &>/dev/null && command -v gh &>/dev/null && command -v curl &>/dev/null; then
+    log_skip "apt update (node, gh, curl 이미 설치됨)"
+else
+    log_install "apt update"
+    $SUDO apt update -qq >> "$SETUP_LOG" 2>&1
+    log_done "apt update ($(_elapsed $_t))"
+fi
 
 ensure_pkg curl
 ensure_cmd node 22 install_node
@@ -104,76 +99,66 @@ ensure_cmd gh 2 install_gh
 CLAUDE_CODE_VERSION="2.1.104"
 CURRENT_CLAUDE_VER="$(claude --version 2>/dev/null || true)"
 if [ "$CURRENT_CLAUDE_VER" = "$CLAUDE_CODE_VERSION (Claude Code)" ]; then
-    log "${GREEN}[skip]${NC} claude-code (v$CLAUDE_CODE_VERSION)"
+    log_skip "claude-code (v$CLAUDE_CODE_VERSION)"
 else
     # native installer 바이너리가 있으면 제거 (npm 버전과 충돌 방지)
     rm -f "$HOME/.local/bin/claude" 2>/dev/null
-    log "${YELLOW}[install]${NC} claude-code (v$CLAUDE_CODE_VERSION)"
+    log_install "claude-code (v$CLAUDE_CODE_VERSION)"
     _t=$SECONDS
     $SUDO npm install -g "@anthropic-ai/claude-code@$CLAUDE_CODE_VERSION" >> "$SETUP_LOG" 2>&1
     hash -r
-    log "  ${GREEN}[done]${NC} claude-code ($(fmt_elapsed $_t))"
+    log_done "claude-code ($(_elapsed $_t))"
 fi
 
-log ""
-log "Script directory: $SCRIPT_DIR"
+log_info "Script directory: $SCRIPT_DIR"
 
 # GitHub token 설정
 TOKEN="$(cat "$SCRIPT_DIR/github_token.txt" 2>/dev/null | tr -d '[:space:]')"
 if [ -z "$TOKEN" ]; then
-    log "${RED}Error:${NC} github_token.txt is empty. Please fill in your GitHub token into $SCRIPT_DIR/github_token.txt"
+    log_fail "github_token.txt is empty. Please fill in your GitHub token."
     return 1
 fi
 export GITHUB_TOKEN="$TOKEN"
-log "GITHUB_TOKEN set from github_token.txt"
+log_pass "GITHUB_TOKEN set"
 
 # Claude OAuth token 설정
 CLAUDE_TOKEN="$(cat "$SCRIPT_DIR/claude_token.txt" 2>/dev/null | tr -d '[:space:]')"
 if [ -n "$CLAUDE_TOKEN" ]; then
     export CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_TOKEN"
-    log "CLAUDE_CODE_OAUTH_TOKEN set from claude_token.txt"
+    log_pass "CLAUDE_CODE_OAUTH_TOKEN set (${CLAUDE_CODE_OAUTH_TOKEN:0:12}...)"
 
-    # 환경변수 전달 검증 (토큰 앞 12자만 표시)
-    TOKEN_PREVIEW="${CLAUDE_CODE_OAUTH_TOKEN:0:12}..."
-    log "  → CLAUDE_CODE_OAUTH_TOKEN = ${TOKEN_PREVIEW}"
-
-    # Claude Code 설치 및 인증 검증
+    # Claude Code 인증 검증
     if command -v claude &>/dev/null; then
-        CLAUDE_VER="$(claude --version 2>/dev/null)"
-        log "  → Claude Code installed: v${CLAUDE_VER}"
-
         AUTH_JSON="$(claude auth status 2>/dev/null)"
         if echo "$AUTH_JSON" | grep -q '"loggedIn": true'; then
             AUTH_METHOD="$(echo "$AUTH_JSON" | grep -oP '"authMethod": "\K[^"]*')"
-            log "  ${GREEN}→ Claude Code auth OK${NC} (method: ${AUTH_METHOD})"
+            log_pass "Claude Code auth OK (method: ${AUTH_METHOD})"
         else
-            log "  ${RED}→ Claude Code auth FAILED${NC}"
-            log "  ${YELLOW}  claude auth status 출력:${NC} $AUTH_JSON"
+            log_fail "Claude Code auth FAILED"
         fi
-    else
-        log "  ${YELLOW}→ Claude Code not installed yet (skipping auth check)${NC}"
     fi
 else
-    log "${YELLOW}Warning:${NC} claude_token.txt not found or empty. Claude Code OAuth token not set."
+    log_warn "claude_token.txt not found or empty"
 fi
 
 # nvim 설치
-log "Running nvim setup..."
 _t=$SECONDS
+log_install "nvim setup"
 cd "$SCRIPT_DIR/nvim" || return 1
 bash ./install.sh "$SETUP_LOG"
 cd "$SCRIPT_DIR"
-log "  ${GREEN}[done]${NC} nvim setup ($(fmt_elapsed $_t))"
+log_done "nvim setup ($(_elapsed $_t))"
 
 # --- .bashrc 설정 ---
 BASHRC_FILE="$HOME/.bashrc"
 
 if [ ! -f "$BASHRC_FILE" ]; then
-    log "${RED}error:${NC} $BASHRC_FILE is not found."
+    log_fail "$BASHRC_FILE is not found."
     return 1
 fi
 
-log "Updating $BASHRC_FILE..."
+_t=$SECONDS
+log_install ".bashrc 설정"
 cp "$BASHRC_FILE" "${BASHRC_FILE}.bak_$(date +%Y%m%d%H%M%S)"
 
 # PS1과 관련된 빈 if-else 구조를 제거합니다 (color_prompt 관련)
@@ -201,7 +186,7 @@ echo "export GH_TOKEN=\"$TOKEN\"" >> "$BASHRC_FILE"
 echo "bind 'set enable-bracketed-paste off' 2>/dev/null" >> "$BASHRC_FILE"
 echo "alias claude='claude --dangerously-skip-permissions'" >> "$BASHRC_FILE"
 echo "### jhkim-config end" >> "$BASHRC_FILE"
+log_done ".bashrc 설정 ($(_elapsed $_t))"
 
-log ""
 source ~/.bashrc
-log "${GREEN}Setup complete!${NC} (total: $(fmt_elapsed $TOTAL_START))"
+log_done "Setup complete (total: $(_elapsed $TOTAL_START))"
