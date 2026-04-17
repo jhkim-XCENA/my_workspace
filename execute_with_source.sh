@@ -116,6 +116,15 @@ else
     log_done "claude-code ($(_elapsed $_t))"
 fi
 
+# Claude Code 자동 업데이트
+if command -v claude &>/dev/null; then
+    _t=$SECONDS
+    log_install "claude update"
+    claude update --yes >> "$SETUP_LOG" 2>&1 || true
+    hash -r
+    log_done "claude update ($(_elapsed $_t))"
+fi
+
 log_info "Script directory: $SCRIPT_DIR"
 
 # GitHub token 설정
