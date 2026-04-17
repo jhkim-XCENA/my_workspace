@@ -19,21 +19,6 @@ log_detail() { echo "$@" >> "$SETUP_LOG" 2>&1; }
 
 # --- Install helpers ---
 
-ensure_cmd() {
-    local cmd="$1" min_ver="$2" install_fn="$3"
-    if command -v "$cmd" &> /dev/null; then
-        local cur_ver
-        cur_ver="$("$cmd" --version 2>/dev/null | grep -oP '[0-9]+\.[0-9]+' | head -1)"
-        local cur_major="${cur_ver%%.*}"
-        if [ -n "$cur_major" ] && [ "$cur_major" -ge "$min_ver" ] 2>/dev/null; then
-            log "${GREEN}[skip]${NC} $cmd (v$cur_ver)"
-            return 0
-        fi
-    fi
-    log "${YELLOW}[install]${NC} $cmd (requires v$min_ver+)"
-    "$install_fn" >> "$SETUP_LOG" 2>&1
-}
-
 ensure_pkg() {
     local pkg="$1" cmd="${2:-$1}"
     if command -v "$cmd" &> /dev/null || dpkg -s "$pkg" &> /dev/null; then
@@ -56,11 +41,6 @@ ensure_npm() {
 
 # --- Install functions ---
 
-install_node() {
-    curl -fsSL https://deb.nodesource.com/setup_22.x | $SUDO -E bash -
-    $SUDO apt install -y nodejs
-}
-
 install_nvim() {
     $SUDO rm -f /usr/local/bin/nvim
     $SUDO rm -rf /opt/nvim /opt/nvim-linux-x86_64
@@ -79,12 +59,19 @@ version_ge() {
 # --- Main ---
 log "${BLUE}=== Neovim Environment Setup ===${NC}"
 
-log "Updating apt..."
-$SUDO apt update -qq >> "$SETUP_LOG" 2>&1
+# apt update: 필요한 패키지가 없을 때만 실행 (curl, node, git는 execute_with_source.sh에서 설치됨)
+_need_apt=0
+for _cmd in wget unzip gcc make rg fdfind clangd; do
+    command -v "$_cmd" &>/dev/null || { _need_apt=1; break; }
+done
+if [ "$_need_apt" = "1" ]; then
+    log "Updating apt..."
+    $SUDO apt update -qq >> "$SETUP_LOG" 2>&1
+else
+    log "${GREEN}[skip]${NC} apt update"
+fi
 
-# 1. Dependencies
-ensure_pkg curl
-ensure_cmd node 22 install_node
+# 1. Dependencies (curl, node, git는 execute_with_source.sh에서 이미 설치됨)
 ensure_pkg git
 ensure_pkg wget
 ensure_pkg unzip
