@@ -398,17 +398,6 @@ docker exec -u "$CONTAINER_USER" "$container_name" bash -c '
 ' >> "$SETUP_LOG" 2>&1
 log_done "git remote → SSH ($(_elapsed $_t))"
 
-# --- Set git config inside container ---
-_t=$SECONDS
-log_install "git config"
-docker exec -u "$CONTAINER_USER" "$container_name" bash -c '
-  git config --global user.name "jhkim-XCENA"
-  git config --global user.email "jeongho.kim@xcena.com"
-  git config --global credential.helper \
-    "!f() { echo username=x-access-token; echo password=\$GITHUB_TOKEN; }; f"
-' >> "$SETUP_LOG" 2>&1
-log_done "git config ($(_elapsed $_t))"
-
 # --- Switch home repo remote to HTTPS (SSH key identity mismatch) ---
 docker exec -u "$CONTAINER_USER" "$container_name" bash -c '
   cd ~ && url=$(git remote get-url origin 2>/dev/null || true)

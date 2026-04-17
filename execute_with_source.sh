@@ -147,6 +147,23 @@ else
     log_warn "claude_token.txt not found or empty"
 fi
 
+# --- Git config ---
+_t=$SECONDS
+log_install "git config"
+git config --global user.name "jhkim-XCENA"
+git config --global user.email "jeongho.kim@xcena.com"
+git config --global credential.helper \
+    '!f() { echo username=x-access-token; echo password=$GITHUB_TOKEN; }; f'
+
+# 각 레포에 local config 설정
+for repo_dir in /sdk_release /sdk_release/tools/pxcc /llvm-project /microbenchmark; do
+    if [ -d "$repo_dir/.git" ] || [ -f "$repo_dir/.git" ]; then
+        git -C "$repo_dir" config user.name "jhkim-XCENA"
+        git -C "$repo_dir" config user.email "jeongho.kim@xcena.com"
+    fi
+done
+log_done "git config ($(_elapsed $_t))"
+
 # nvim 설치
 _t=$SECONDS
 log_install "nvim setup"
