@@ -309,5 +309,63 @@ echo "alias claude='claude --dangerously-skip-permissions'" >> "$BASHRC_FILE"
 echo "### jhkim-config end" >> "$BASHRC_FILE"
 log_done ".bashrc ($(_elapsed $_t))"
 
+# ============================================================
+# [Step 8] Microbench Dependencies (db-devenv only)
+# ============================================================
+log_section "Microbench Dependencies"
+
+if [ -d /microbenchmark ]; then
+    # hash-map 빌드에 필요한 folly 시스템 의존성
+    _need_folly=0
+    for _pkg in libdouble-conversion-dev libgoogle-glog-dev libboost-all-dev; do
+        dpkg -s "$_pkg" &>/dev/null 2>&1 || { _need_folly=1; break; }
+    done
+    if [ "$_need_folly" = "1" ]; then
+        log_install "hash-map folly dependencies"
+        _t=$SECONDS
+        $SUDO apt-get install -y \
+            libboost-all-dev \
+            libdouble-conversion-dev \
+            libssl-dev \
+            libevent-dev \
+            libgflags-dev \
+            libbz2-dev \
+            liblz4-dev \
+            libzstd-dev \
+            libsnappy-dev \
+            libunwind-dev \
+            libgoogle-glog-dev >> "$SETUP_LOG" 2>&1
+        log_done "hash-map folly deps ($(_elapsed $_t))"
+    else
+        log_skip "hash-map folly dependencies (already installed)"
+    fi
+
+    # table-scan TPC-H 데이터 생성을 위한 Python 패키지
+    if python3 -c "import duckdb, pyarrow" &>/dev/null 2>&1; then
+        log_skip "python3 duckdb/pyarrow (already installed)"
+    else
+        log_install "python3 duckdb pyarrow"
+        _t=$SECONDS
+        pip install duckdb pyarrow --break-system-packages >> "$SETUP_LOG" 2>&1
+        log_done "python3 duckdb pyarrow ($(_elapsed $_t))"
+    fi
+
+    # compression workload용 silesia 코퍼스 다운로드
+    SILESIA_DIR="/microbenchmark/workloads/compression/silesia"
+    if [ -f "$SILESIA_DIR/nci" ]; then
+        log_skip "silesia corpus (already present)"
+    elif [ -d "/microbenchmark/workloads/compression" ]; then
+        log_install "silesia corpus"
+        _t=$SECONDS
+        (cd /microbenchmark/workloads/compression && bash download-silesia.sh >> "$SETUP_LOG" 2>&1) \
+            && log_done "silesia corpus ($(_elapsed $_t))" \
+            || log_warn "silesia 다운로드 실패 (setup.log 참조)"
+    else
+        log_skip "silesia corpus (microbenchmark 없음)"
+    fi
+else
+    log_skip "microbench dependencies (/microbenchmark not mounted — not db-devenv)"
+fi
+
 source ~/.bashrc
 log_done "Setup complete (total: $(_elapsed $TOTAL_START))"
