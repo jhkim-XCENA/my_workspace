@@ -340,14 +340,14 @@ if [ -d /microbenchmark ]; then
         log_skip "hash-map folly dependencies (already installed)"
     fi
 
-    # table-scan TPC-H 데이터 생성을 위한 Python 패키지
-    if python3 -c "import duckdb, pyarrow" &>/dev/null 2>&1; then
-        log_skip "python3 duckdb/pyarrow (already installed)"
+    # table-scan TPC-H 데이터 생성 및 벤치마크 분석용 Python 패키지
+    if python3 -c "import duckdb, pyarrow, yaml" &>/dev/null 2>&1; then
+        log_skip "python3 duckdb/pyarrow/pyyaml (already installed)"
     else
-        log_install "python3 duckdb pyarrow"
+        log_install "python3 duckdb pyarrow pyyaml"
         _t=$SECONDS
-        pip install duckdb pyarrow --break-system-packages >> "$SETUP_LOG" 2>&1
-        log_done "python3 duckdb pyarrow ($(_elapsed $_t))"
+        pip install duckdb pyarrow pyyaml --break-system-packages >> "$SETUP_LOG" 2>&1
+        log_done "python3 duckdb pyarrow pyyaml ($(_elapsed $_t))"
     fi
 
     # compression workload용 silesia 코퍼스 다운로드
