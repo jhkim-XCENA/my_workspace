@@ -27,9 +27,9 @@ RED='\033[0;31m'
 GRAY='\033[0;90m'
 NC='\033[0m'
 
-# --- Timing & logging helpers (launch_docker_container.sh와 동일 포맷) ---
+# --- Timing & logging helpers ---
 TOTAL_START=$SECONDS
-_ts() { printf "${GRAY}[%02d:%02d]${NC}" $(( (SECONDS - TOTAL_START) / 60 )) $(( (SECONDS - TOTAL_START) % 60 )); }
+_ts()      { printf "${GRAY}[%02d:%02d]${NC}" $(( (SECONDS - TOTAL_START) / 60 )) $(( (SECONDS - TOTAL_START) % 60 )); }
 _elapsed() { local d=$((SECONDS - $1)); printf "%dm %ds" $((d/60)) $((d%60)); }
 
 log_done()    { echo -e "$(_ts)${GREEN}[done]${NC} $1"; }
@@ -39,7 +39,9 @@ log_info()    { echo -e "$(_ts) $1"; }
 log_pass()    { echo -e "$(_ts)${GREEN}[ok]${NC} $1"; }
 log_fail()    { echo -e "$(_ts)${RED}[fail]${NC} $1"; }
 log_warn()    { echo -e "$(_ts)${YELLOW}[warn]${NC} $1"; }
-log_section() { echo -e "\n$(_ts) === $1 ==="; }
+
+STEP=0
+log_section() { STEP=$((STEP+1)); echo -e "\n$(_ts) === [Step $STEP] $1 ==="; }
 
 # --- Install helpers ---
 
@@ -74,34 +76,72 @@ ensure_pkg() {
     log_done "$pkg ($(_elapsed $_t))"
 }
 
+# ensure_npm <package_name>
+ensure_npm() {
+    local pkg="$1"
+    if npm list -g "$pkg" &> /dev/null; then
+        log_skip "npm:$pkg"
+        return 0
+    fi
+    log_install "npm:$pkg"
+    local _t=$SECONDS
+    npm install -g "$pkg" >> "$SETUP_LOG" 2>&1
+    log_done "npm:$pkg ($(_elapsed $_t))"
+}
+
 # --- Install functions ---
+install_node() { bash "$SCRIPT_DIR/third_party/install_node.sh"; }
+install_gh()   { bash "$SCRIPT_DIR/third_party/install_gh.sh"; }
 
-install_node() {
-    bash "$SCRIPT_DIR/third_party/install_node.sh"
-}
+# ============================================================
+# Main
+# ============================================================
+log_info "Setup log: $SETUP_LOG"
 
-install_gh() {
-    bash "$SCRIPT_DIR/third_party/install_gh.sh"
-}
+# ============================================================
+# [Step 1] Prerequisites
+# ============================================================
+log_section "Prerequisites"
 
-# --- Main ---
-log_section "Environment Setup (detail: $SETUP_LOG)"
-
-# apt update: curl만 없을 때 실행 (node/gh는 tarball로 설치하므로 apt 불필요)
-_t=$SECONDS
-if command -v curl &>/dev/null; then
-    log_skip "apt update (curl 이미 설치됨)"
-else
+# apt update: 필요한 패키지 중 하나라도 없으면 실행
+_need_apt=0
+for _cmd in curl git wget unzip gcc make rg fdfind clangd; do
+    command -v "$_cmd" &>/dev/null || { _need_apt=1; break; }
+done
+if [ "$_need_apt" = "1" ]; then
     log_install "apt update"
+    _t=$SECONDS
     $SUDO apt update -qq >> "$SETUP_LOG" 2>&1
     log_done "apt update ($(_elapsed $_t))"
+else
+    log_skip "apt update (all deps present)"
 fi
 
+# system packages (nvim 의존성 포함)
 ensure_pkg curl
-ensure_cmd node 22 install_node
-ensure_cmd gh 2 install_gh
+ensure_pkg git
+ensure_pkg wget
+ensure_pkg unzip
+ensure_pkg gcc
+ensure_pkg make
+ensure_pkg ripgrep rg
+ensure_pkg fd-find fdfind
+ensure_pkg clangd
 
-# Claude Code 설치 (npm으로 버전 고정)
+# node / gh
+ensure_cmd node 22 install_node
+ensure_cmd gh   2  install_gh
+
+# npm LSP tools (node 설치 후)
+if command -v npm &>/dev/null; then
+    ensure_npm bash-language-server
+fi
+
+# ============================================================
+# [Step 2] Claude Code
+# ============================================================
+log_section "Claude Code"
+
 CLAUDE_CODE_VERSION="2.1.104"
 CURRENT_CLAUDE_VER="$(claude --version 2>/dev/null || true)"
 if [ "$CURRENT_CLAUDE_VER" = "$CLAUDE_CODE_VERSION (Claude Code)" ]; then
@@ -116,7 +156,6 @@ else
     log_done "claude-code ($(_elapsed $_t))"
 fi
 
-# Claude Code 자동 업데이트
 if command -v claude &>/dev/null; then
     _t=$SECONDS
     log_install "claude update"
@@ -125,9 +164,11 @@ if command -v claude &>/dev/null; then
     log_done "claude update ($(_elapsed $_t))"
 fi
 
-log_info "Script directory: $SCRIPT_DIR"
+# ============================================================
+# [Step 3] Auth & Tokens
+# ============================================================
+log_section "Auth & Tokens"
 
-# GitHub token 설정
 TOKEN="$(cat "$SCRIPT_DIR/github_token.txt" 2>/dev/null | tr -d '[:space:]')"
 if [ -z "$TOKEN" ]; then
     log_fail "github_token.txt is empty. Please fill in your GitHub token."
@@ -136,13 +177,11 @@ fi
 export GITHUB_TOKEN="$TOKEN"
 log_pass "GITHUB_TOKEN set"
 
-# Claude OAuth token 설정
 CLAUDE_TOKEN="$(cat "$SCRIPT_DIR/claude_token.txt" 2>/dev/null | tr -d '[:space:]')"
 if [ -n "$CLAUDE_TOKEN" ]; then
     export CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_TOKEN"
     log_pass "CLAUDE_CODE_OAUTH_TOKEN set (${CLAUDE_CODE_OAUTH_TOKEN:0:12}...)"
 
-    # Claude Code 인증 검증
     if command -v claude &>/dev/null; then
         AUTH_JSON="$(claude auth status 2>/dev/null)"
         if echo "$AUTH_JSON" | grep -q '"loggedIn": true'; then
@@ -156,9 +195,12 @@ else
     log_warn "claude_token.txt not found or empty"
 fi
 
-# --- Git config ---
+# ============================================================
+# [Step 4] Git Config
+# ============================================================
+log_section "Git Config"
+
 _t=$SECONDS
-log_install "git config"
 git config --global user.name "jhkim-XCENA"
 git config --global user.email "jeongho.kim@xcena.com"
 git config --global credential.helper \
@@ -173,24 +215,55 @@ for repo_dir in /sdk_release /sdk_release/tools/pxcc /llvm-project /microbenchma
 done
 log_done "git config ($(_elapsed $_t))"
 
-# nvim 설치
+# ============================================================
+# [Step 5] pxcc
+# ============================================================
+log_section "pxcc"
+
+PXCC_DIR="/sdk_release/tools/pxcc"
+if [ -d "$PXCC_DIR/.git" ] || [ -f "$PXCC_DIR/.git" ]; then
+    _t=$SECONDS
+    log_install "pxcc update (git pull)"
+    git -C "$PXCC_DIR" pull --ff-only >> "$SETUP_LOG" 2>&1 \
+        && log_done "pxcc update ($(_elapsed $_t))" \
+        || log_warn "pxcc update 실패 (setup.log 참조)"
+
+    if [ -f "$PXCC_DIR/scripts/install_dependencies.sh" ]; then
+        _t=$SECONDS
+        log_install "pxcc install_dependencies"
+        bash "$PXCC_DIR/scripts/install_dependencies.sh" >> "$SETUP_LOG" 2>&1 \
+            && log_done "pxcc install_dependencies ($(_elapsed $_t))" \
+            || log_warn "pxcc install_dependencies 실패 (setup.log 참조)"
+    else
+        log_warn "pxcc/scripts/install_dependencies.sh 를 찾을 수 없음"
+    fi
+else
+    log_skip "pxcc ($PXCC_DIR 없음)"
+fi
+
+# ============================================================
+# [Step 6] Neovim
+# ============================================================
+log_section "Neovim"
+
 _t=$SECONDS
-log_install "nvim setup"
 cd "$SCRIPT_DIR/nvim" || return 1
 TOTAL_START="$TOTAL_START" bash ./install.sh "$SETUP_LOG"
 cd "$SCRIPT_DIR"
 log_done "nvim setup ($(_elapsed $_t))"
 
-# --- .bashrc 설정 ---
-BASHRC_FILE="$HOME/.bashrc"
+# ============================================================
+# [Step 7] Shell (.bashrc)
+# ============================================================
+log_section "Shell (.bashrc)"
 
+BASHRC_FILE="$HOME/.bashrc"
 if [ ! -f "$BASHRC_FILE" ]; then
     log_fail "$BASHRC_FILE is not found."
     return 1
 fi
 
 _t=$SECONDS
-log_install ".bashrc 설정"
 cp "$BASHRC_FILE" "${BASHRC_FILE}.bak_$(date +%Y%m%d%H%M%S)"
 
 # PS1과 관련된 빈 if-else 구조를 제거합니다 (color_prompt 관련)
@@ -229,7 +302,7 @@ fi
 echo "bind 'set enable-bracketed-paste off' 2>/dev/null" >> "$BASHRC_FILE"
 echo "alias claude='claude --dangerously-skip-permissions'" >> "$BASHRC_FILE"
 echo "### jhkim-config end" >> "$BASHRC_FILE"
-log_done ".bashrc 설정 ($(_elapsed $_t))"
+log_done ".bashrc ($(_elapsed $_t))"
 
 source ~/.bashrc
 log_done "Setup complete (total: $(_elapsed $TOTAL_START))"

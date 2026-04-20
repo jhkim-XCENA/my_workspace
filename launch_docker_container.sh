@@ -39,14 +39,16 @@ log_info()    { echo -e "$(_ts) $1"; }
 log_pass()    { echo -e "$(_ts)${GREEN}[ok]${NC} $1"; }
 log_fail()    { echo -e "$(_ts)${RED}[fail]${NC} $1"; ERRORS=$((ERRORS + 1)); }
 log_warn()    { echo -e "$(_ts)${YELLOW}[warn]${NC} $1"; }
-log_section() { echo -e "\n$(_ts) === $1 ==="; }
+
+STEP=0
+log_section() { STEP=$((STEP+1)); echo -e "\n$(_ts) === [Step $STEP] $1 ==="; }
 
 # ============================================================
 # Preflight check
 # ============================================================
 ERRORS=0
 
-log_section "Preflight check"
+log_section "Preflight"
 
 # --- 1. Files & directories ---
 log_info "[1] 호스트 파일 및 디렉토리"
@@ -115,7 +117,7 @@ log_pass "Preflight 통과"
 # Mode-specific setup (db-devenv repo & image)
 # ============================================================
 if [ "$LAUNCH_MODE" = "db_devenv" ]; then
-    log_section "db-devenv 모드"
+    log_section "Mode: db-devenv"
     DB_DEVENV_DIR="$SCRIPT_PATH/db-devenv"
 
     # db-devenv 레포 clone 또는 업데이트
@@ -190,7 +192,7 @@ log_info "Session: $session_dir"
 # ============================================================
 # Clone repos (shallow, SSH)
 # ============================================================
-log_section "Clone repos"
+log_section "Clone repos (host → session dir)"
 
 clone_if_missing() {
     local dir="$1"
@@ -239,6 +241,7 @@ fi
 # Launch container
 # ============================================================
 log_section "Launch container ($container_name, ${type_prefix}/${mode})"
+log_info "[docker outside] docker run 및 볼륨 마운트"
 _t=$SECONDS
 
 DOCKER_KVM_OPTS=()
@@ -306,7 +309,7 @@ fi
 # ============================================================
 # Post-launch: create worker user and bootstrap (단계별 타이밍)
 # ============================================================
-log_section "Container setup"
+log_section "Container init [docker inside]"
 
 # --- 1. User 생성 ---
 _t=$SECONDS
@@ -410,7 +413,7 @@ docker exec -u "$CONTAINER_USER" "$container_name" bash -c '
 ' >> "$SETUP_LOG" 2>&1
 
 # --- Run execute_with_source.sh as worker inside container ---
-log_section "Environment setup (execute_with_source.sh)"
+log_section "Environment bootstrap [docker inside] (execute_with_source.sh)"
 _t=$SECONDS
 docker exec -u "$CONTAINER_USER" "$container_name" bash -c 'cd ~ && source ./execute_with_source.sh'
 log_done "execute_with_source.sh ($(_elapsed $_t))"
