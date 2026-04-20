@@ -15,6 +15,9 @@ if [[ $EUID -ne 0 ]]; then
     SUDO="sudo"
 fi
 
+# apt: debconf 경고 억제
+export DEBIAN_FRONTEND=noninteractive
+
 # db-devenv 이미지의 nvm 로드 (node가 /opt/nvm에 설치되어 PATH에 없는 경우)
 if [ -s "${NVM_DIR:-/opt/nvm}/nvm.sh" ]; then
     export NVM_DIR="${NVM_DIR:-/opt/nvm}"
@@ -151,7 +154,9 @@ else
     rm -f "$HOME/.local/bin/claude" 2>/dev/null
     log_install "claude-code (v$CLAUDE_CODE_VERSION)"
     _t=$SECONDS
-    $SUDO npm install -g "@anthropic-ai/claude-code@$CLAUDE_CODE_VERSION" >> "$SETUP_LOG" 2>&1
+    # sudo는 nvm PATH를 상속하지 않으므로 env PATH를 명시적으로 전달
+    $SUDO env PATH="$PATH" npm install -g "@anthropic-ai/claude-code@$CLAUDE_CODE_VERSION" >> "$SETUP_LOG" 2>&1 \
+        || { log_fail "claude-code 설치 실패 (setup.log 참조)"; return 1; }
     hash -r
     log_done "claude-code ($(_elapsed $_t))"
 fi
