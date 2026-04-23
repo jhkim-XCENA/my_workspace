@@ -142,19 +142,23 @@ else
     image_name="192.168.57.60:8008/sdk_release/sdk_release:latest"
 fi
 
-# --- Docker 이미지 확인/pull ---
+# --- Docker 이미지 확인/pull (항상 최신 pull 시도) ---
 log_info "[3] Docker 이미지"
+HAS_LOCAL_IMAGE=false
 if docker image inspect "$image_name" &>/dev/null 2>&1; then
+    HAS_LOCAL_IMAGE=true
     log_pass "이미지 로컬에 존재: $image_name"
+fi
+
+log_install "이미지 pull (최신 확인): $image_name"
+_t=$SECONDS
+if docker pull "$image_name" >> "$SETUP_LOG" 2>&1; then
+    log_done "이미지 pull ($(_elapsed $_t))"
+elif [ "$HAS_LOCAL_IMAGE" = true ]; then
+    log_warn "이미지 pull 실패 — 로컬 이미지로 진행 ($(_elapsed $_t))"
 else
-    log_warn "이미지 로컬에 없음 (pull 시도)"
-    _t=$SECONDS
-    if docker pull "$image_name" >> "$SETUP_LOG" 2>&1; then
-        log_done "이미지 pull ($(_elapsed $_t))"
-    else
-        log_fail "이미지 pull 실패: $image_name"
-        return 1
-    fi
+    log_fail "이미지 pull 실패 & 로컬에도 없음: $image_name"
+    return 1
 fi
 
 # ============================================================
