@@ -308,6 +308,9 @@ if [ -n "$CLAUDE_TOKEN" ]; then
 fi
 echo "bind 'set enable-bracketed-paste off' 2>/dev/null" >> "$BASHRC_FILE"
 echo "alias claude='claude --dangerously-skip-permissions'" >> "$BASHRC_FILE"
+echo "reset" >> "$BASHRC_FILE"
+echo "tput reset" >> "$BASHRC_FILE"
+echo "stty sane" >> "$BASHRC_FILE"
 echo "### jhkim-config end" >> "$BASHRC_FILE"
 log_done ".bashrc ($(_elapsed $_t))"
 
