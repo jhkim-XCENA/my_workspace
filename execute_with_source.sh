@@ -145,28 +145,30 @@ fi
 # ============================================================
 log_section "Claude Code"
 
-CLAUDE_CODE_VERSION="2.1.104"
-CURRENT_CLAUDE_VER="$(claude --version 2>/dev/null || true)"
-if [ "$CURRENT_CLAUDE_VER" = "$CLAUDE_CODE_VERSION (Claude Code)" ]; then
-    log_skip "claude-code (v$CLAUDE_CODE_VERSION)"
-else
-    # native installer 바이너리가 있으면 제거 (npm 버전과 충돌 방지)
-    rm -f "$HOME/.local/bin/claude" 2>/dev/null
-    log_install "claude-code (v$CLAUDE_CODE_VERSION)"
+# npm 구버전이 남아있으면 제거 (native installer와 충돌 방지)
+if npm list -g @anthropic-ai/claude-code &>/dev/null 2>&1; then
+    log_install "removing npm claude-code (migrating to native installer)"
     _t=$SECONDS
-    # sudo는 nvm PATH를 상속하지 않으므로 env PATH를 명시적으로 전달
-    $SUDO env PATH="$PATH" npm install -g "@anthropic-ai/claude-code@$CLAUDE_CODE_VERSION" >> "$SETUP_LOG" 2>&1 \
-        || { log_fail "claude-code 설치 실패 (setup.log 참조)"; return 1; }
+    $SUDO env PATH="$PATH" npm uninstall -g @anthropic-ai/claude-code >> "$SETUP_LOG" 2>&1 || true
     hash -r
-    log_done "claude-code ($(_elapsed $_t))"
+    log_done "npm claude-code removed ($(_elapsed $_t))"
 fi
 
+# native installer로 설치/업데이트
 if command -v claude &>/dev/null; then
     _t=$SECONDS
     log_install "claude update"
     claude update --yes >> "$SETUP_LOG" 2>&1 || true
     hash -r
     log_done "claude update ($(_elapsed $_t))"
+else
+    log_install "claude-code (native installer)"
+    _t=$SECONDS
+    curl -fsSL https://cli.claude.com/install.sh | sh >> "$SETUP_LOG" 2>&1 \
+        || { log_fail "claude-code 설치 실패 (setup.log 참조)"; return 1; }
+    export PATH="$HOME/.local/bin:$PATH"
+    hash -r
+    log_done "claude-code ($(_elapsed $_t))"
 fi
 
 # ============================================================
