@@ -244,6 +244,20 @@ if [ -d "$PXCC_DIR/.git" ] || [ -f "$PXCC_DIR/.git" ]; then
     else
         log_warn "pxcc/scripts/install_dependencies.sh 를 찾을 수 없음"
     fi
+
+    # install_pxcc.sh produces build/compile_commands.json and symlinks it to
+    # the project root, which Claude Code's LSP needs for accurate include
+    # resolution. Without this, file edits trigger spurious "file not found"
+    # diagnostics from headers reachable only via build -I flags.
+    if [ -f "$PXCC_DIR/scripts/install_pxcc.sh" ]; then
+        _t=$SECONDS
+        log_install "pxcc install_pxcc (build + compile_commands link)"
+        bash "$PXCC_DIR/scripts/install_pxcc.sh" >> "$SETUP_LOG" 2>&1 \
+            && log_done "pxcc install_pxcc ($(_elapsed $_t))" \
+            || log_warn "pxcc install_pxcc 실패 (setup.log 참조)"
+    else
+        log_warn "pxcc/scripts/install_pxcc.sh 를 찾을 수 없음"
+    fi
 else
     log_skip "pxcc ($PXCC_DIR 없음)"
 fi
