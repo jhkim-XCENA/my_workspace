@@ -255,7 +255,7 @@ if [ "$LAUNCH_MODE" = "db_devenv" ]; then
 elif [ "$USE_KVM" = true ]; then
     DOCKER_KVM_OPTS+=(--device=/dev/kvm --cap-add=SYS_ADMIN)
 else
-    DOCKER_KVM_OPTS+=(--privileged)
+    DOCKER_KVM_OPTS+=(--privileged --cap-add=SYS_ADMIN)
 fi
 
 # db-devenv 추가 볼륨/옵션
