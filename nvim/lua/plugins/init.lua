@@ -204,7 +204,23 @@ return {
         "MeanderingProgrammer/render-markdown.nvim",
         dependencies = { "nvim-treesitter/nvim-treesitter", "nvim-tree/nvim-web-devicons" },
         ft = { "markdown" },
-        opts = {},
+        opts = {
+            code = {
+                style = "full",
+                width = "block",
+                left_pad = 1,
+                right_pad = 1,
+                border = "thick",
+                highlight = "RenderMarkdownCode",
+                highlight_inline = "RenderMarkdownCodeInline",
+            },
+        },
+        config = function(_, opts)
+            require("render-markdown").setup(opts)
+            -- VSCode 스타일 고대비 코드블록 배경 (편집기 bg #1f1f1f 대비 밝게)
+            vim.api.nvim_set_hl(0, "RenderMarkdownCode",       { bg = "#2d2d2d" })
+            vim.api.nvim_set_hl(0, "RenderMarkdownCodeInline", { bg = "#2d2d2d", fg = "#ce9178" })
+        end,
     },
 
     -- 10. 자동 괄호/따옴표 짝 맞추기
