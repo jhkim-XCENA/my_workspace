@@ -94,6 +94,24 @@ sshpass -p "$REMOTE_PASSWORD" ssh "$REMOTE_USER@$REMOTE_IP" '
   dpkg -l libpxl                                # 3.0.0
   ls /tmp/pxl/                                  # service_pipe + history.log 존재
 '
+
+# 데몬이 device 를 enumerate 했는지 확인 (가장 결정적)
+sshpass -p "$REMOTE_PASSWORD" ssh "$REMOTE_USER@$REMOTE_IP" \
+  'sudo journalctl -u pxl_resourced --no-pager -n 50 | grep -E "Device.*added successfully|Failed to get device info"'
+# "Device N added successfully (total devices: N)" 가 device 개수만큼 나와야 정상
+# "Failed to get device info for memdevN" 가 보이면 §3.4 (FW) 진단으로
+```
+
+### 3.4 device firmware 확인 (libpxl 3.0.0 은 FW 1.0.7+ 필요)
+```bash
+sshpass -p "$REMOTE_PASSWORD" ssh "$REMOTE_USER@$REMOTE_IP" '
+  for i in 0 1 2; do
+    echo "--- device $i ---"
+    sudo xcena_cli fw-info $i 2>&1 | grep -E "Firmware Revision|Active Slot"
+  done
+'
+# Firmware Revision: 1.0.7 이상이 모든 device 에서 보여야 함
+# 1.0.5 이하면 §7 참고하여 유저에게 FW 업데이트 요청
 ```
 
 ### 3.4 dmesg
@@ -171,14 +189,43 @@ cd /sdk_release && git pull --ff-only && git submodule update --init --recursive
 | `cxl list -R` 비어있음 | 부팅 시 CXL 토폴로지 형성 실패 (PCI rebind 후 흔함) | reboot |
 | `mx_dma is in use` (rmmod 실패) | 컨테이너/데몬이 fd 들고 있음 | docker stop + `sudo pkill -f pxl_resourced` |
 | GitHub Push Protection (token leak) | config.sh에 실제 토큰 commit | `git update-index --skip-worktree config.sh` 후 빈 템플릿 commit |
-| sort 빌드 OK / 실행 시 `Failed to create context` | 옛 sort 소스 ↔ 새 libpxl API mismatch (예: `pxl::Result` → `pxl::runtime::Result`) | 새 sample 코드로 교체 또는 sort 소스 수정 |
+| sort 빌드 OK / 실행 시 `Execution: Device not computable (N)` / `Failed to create context` | **device FW 가 libpxl 버전과 안 맞음**. 새 libpxl 3.0.0 + 새 mx_dma driver 조합은 **FW 1.0.7 이상** 필요. FW 1.0.5 device 는 daemon enumerate 단계부터 fail (`MxDevice::initialize` silent return false), journal 에 `[xif::cxl] Failed to get device info for memdevN` | `sudo xcena_cli fw-info <id>` 로 Active Slot 의 Firmware Revision 확인 → 1.0.7 미만이면 유저에게 FW 업데이트 요청 |
+| daemon journal 에 `[xif::cxl] Failed to get device info for memdevN` | 해당 device 의 `MxDevice::initialize` 실패 — 거의 대부분 FW 버전 호환성 문제 | 위와 동일 |
+| `xcena_cli num-device` 가 `1` 또는 일부 device 만 반환 | Active Slot FW 가 호환되지 않는 device 는 driver 가 enumerate 안 함 | 누락된 ID 의 fw-info 확인 |
 
 ---
 
-## 7. 알려진 미해결 이슈 (2026-04-30 기준)
+## 7. FW ↔ libpxl 호환성 (2026-04-30 검증)
+
+이번 세션에서 실증된 호환성:
+
+| Active Slot FW | libpxl 3.0.0 + 새 mx_dma driver | 관찰 |
+|---------------|----------------------------------|------|
+| **1.0.5** | ❌ daemon `MxDevice::initialize` 실패 → `Device not computable` | 본 세션 시작 시 모든 device FW 1.0.5 였고 sort/createContext 모두 fail |
+| **1.0.7** | ✅ `Resource: Device N added successfully` + sort 정상 실행 (~10 ms) | FW 업데이트 후 3개 device 모두 sort_with_ptr / sort_with_ndarray 성공 |
+
+**FW 진단**:
+```bash
+# 현 FW 확인 (Active Slot 의 Firmware Revision)
+sudo xcena_cli fw-info <device_id>
+```
+1.0.7 미만이면 업데이트 필요 — **유저에게 요청** (FW 업데이트는 본 진단 범위 밖, 유저가 수행).
+
+업데이트 후 reboot (`bash remote/reset.sh`) 하면 daemon journal 에 다음과 같이 device enumerate 로그가 보이면 정상:
+```
+Resource: Found 1 CXL region(s) for memdev0:
+    DAX Device: /dev/dax0.0
+    Host Physical Addr: 0x...
+    Size: 0x3a40000000 (233.00 GB)
+Resource: Device 0 added successfully (total devices: 1)
+```
+
+## 8. 알려진 미해결 이슈 (2026-04-30 기준)
 
 1. **SDK 1.4.5의 `xcena_cli` binary가 정상 host stack에서도 0 devices** — db-devenv 이미지의 옛 `xcena_cli` 와 같은 host에서 비교 검증됨. `binaries/xcena_cli.legacy` 자동 fallback으로 우회. 해당 SDK 빌드 fix 시 fallback 제거 필요.
-2. **`/work/example/sort/`** 의 코드는 옛 pxl API 기준 — pxl 3.0.0 헤더와 namespace 다름 (`pxl::Result` vs `pxl::runtime::Result`). 빌드는 되지만 런타임 실패.
+2. ~~`pxl::createContext(0)` 런타임 실패~~ — **2026-04-30 해소**: 원인은 device FW (1.0.5) ↔ libpxl 3.0.0 호환성. FW 1.0.7 로 업데이트 후 sort 정상 실행 (위 §7).
+
+> 참고: `compat.hpp` 가 옛 `pxl::runtime::*` / `pxl::kernel::*` / `pxl::memory::*` namespace 를 새 flat `pxl::*` 로 매핑하는 deprecated alias 를 제공. 옛 소스도 새 헤더에서 빌드 가능 (deprecation 경고 출력). 단, **반대 방향(옛 헤더 + 새 코드)은 alias 없음** — db 이미지(libpxl 2.x, `pxl::runtime::*` 헤더) 에 본 sort 소스(flat `pxl::*`) 빌드 시도하면 컴파일 에러.
 
 ---
 

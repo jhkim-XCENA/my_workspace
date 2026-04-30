@@ -97,11 +97,29 @@ if [ -n "$bad" ]; then
     echo "$bad" | head -3 | sed 's/^/      /'
 fi
 
-# Firmware: just the revision line(s)
-fw_out="$(rdocker_exec "xcena_cli fw-info 0" 2>&1 || true)"
-fw_lines="$(echo "$fw_out" | grep -E 'Active Slot|Firmware Revision' | head -3 | xargs -I{} echo '  {}' || true)"
-if [ -n "$fw_lines" ]; then
-    echo "$fw_lines"
+# Firmware: per-device Active Slot revision + minimum version warning.
+# libpxl 3.0.0 + new mx_dma driver requires FW 1.0.7+ (see docs/remote/system_debugging.md §7);
+# older FW silently fails MxDevice::initialize, so we surface this prominently.
+log_info "  Firmware:"
+fw_min="1.0.7"
+fw_warned=0
+for i in 0 1 2; do
+    fw_out="$(rssh "sudo xcena_cli fw-info $i 2>&1" 2>/dev/null || true)"
+    fw_rev="$(echo "$fw_out" | grep -m1 'Firmware Revision' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)"
+    if [ -z "$fw_rev" ]; then
+        log_info "    device $i: (fw-info unavailable)"
+        continue
+    fi
+    # Compare revs as dotted ints
+    if [ "$(printf '%s\n%s\n' "$fw_min" "$fw_rev" | sort -V | head -1)" = "$fw_min" ]; then
+        log_info "    device $i: FW $fw_rev (>= $fw_min)"
+    else
+        log_warn "    device $i: FW $fw_rev — below required $fw_min, libpxl 3.0.0 enumerate may fail"
+        fw_warned=1
+    fi
+done
+if [ "$fw_warned" = "1" ]; then
+    log_warn "  → 유저에게 FW 업데이트 요청 후 reboot 필요"
 fi
 
 # ── 5. sort scp + build + run ──
