@@ -267,6 +267,16 @@ else
     DOCKER_KVM_OPTS+=(--privileged --cap-add=SYS_ADMIN)
 fi
 
+# Silicon mode: containers must mount /tmp/pxl so xcena_cli can talk to the
+# host pxl_resourced daemon (XCENA Resource Management Daemon). Without it,
+# `xcena_cli num-device` reports "No CXL devices found" even with --privileged
+# because the device discovery flows through service_pipe FIFOs in /tmp/pxl,
+# not through /dev/mx_dma directly.
+DOCKER_PXL_OPTS=()
+if [ "$USE_KVM" = false ] && [ -d /tmp/pxl ]; then
+    DOCKER_PXL_OPTS+=(-v /tmp/pxl:/tmp/pxl)
+fi
+
 # db-devenv 추가 볼륨/옵션
 DOCKER_EXTRA_OPTS=()
 if [ "$LAUNCH_MODE" = "db_devenv" ]; then
@@ -300,6 +310,7 @@ docker run -dit \
   -e LANG=C.UTF-8 \
   -e LC_ALL=C.UTF-8 \
   "${DOCKER_KVM_OPTS[@]}" \
+  "${DOCKER_PXL_OPTS[@]}" \
   "${DOCKER_EXTRA_OPTS[@]}" \
   "$image_name" >> "$SETUP_LOG" 2>&1
 log_done "docker run ($(_elapsed $_t))"
