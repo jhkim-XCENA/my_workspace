@@ -444,6 +444,40 @@ docker exec -u "$CONTAINER_USER" "$container_name" bash -c 'cd ~ && source ./exe
 log_done "execute_with_source.sh ($(_elapsed $_t))"
 
 # ============================================================
+# xcena_cli sanity check + legacy fallback
+# ============================================================
+# In silicon mode, the SDK's xcena_cli (currently 1.4.5) may report 0 devices
+# even when the host stack (driver + libpxl + pxl_resourced) is healthy and
+# /dev/mx_dma is populated correctly. The older xcena_cli binary baked into
+# the db-devenv image enumerates devices fine on the same host, so we keep it
+# checked into binaries/xcena_cli.legacy as a workaround until the SDK's
+# xcena_cli is fixed upstream.
+LEGACY_CLI="$SCRIPT_PATH/binaries/xcena_cli.legacy"
+if [ "$USE_KVM" = false ] && [ -f "$LEGACY_CLI" ]; then
+    log_section "xcena_cli sanity check"
+    _t=$SECONDS
+    cli_n="$(docker exec -u "$CONTAINER_USER" "$container_name" \
+        bash -lc 'xcena_cli num-device 2>/dev/null | grep -oP "Number of devices : \K[0-9]+" || echo 0' 2>/dev/null \
+        | tr -d '[:space:]')"
+    if [ -z "$cli_n" ] || [ "$cli_n" = "0" ]; then
+        log_warn "xcena_cli num-device → 0 inside container — applying legacy binary workaround"
+        log_warn "  TODO: drop this workaround once SDK ships an xcena_cli that re-detects devices"
+        docker cp "$LEGACY_CLI" "$container_name:/usr/local/bin/xcena_cli" >> "$SETUP_LOG" 2>&1
+        docker exec -u root "$container_name" chmod +x /usr/local/bin/xcena_cli >> "$SETUP_LOG" 2>&1
+        cli_n2="$(docker exec -u "$CONTAINER_USER" "$container_name" \
+            bash -lc 'xcena_cli num-device 2>/dev/null | grep -oP "Number of devices : \K[0-9]+" || echo 0' 2>/dev/null \
+            | tr -d '[:space:]')"
+        if [ "${cli_n2:-0}" -ge 1 ] 2>/dev/null; then
+            log_done "legacy xcena_cli detects $cli_n2 device(s) ($(_elapsed $_t))"
+        else
+            log_fail "legacy xcena_cli also reports 0 devices — host driver/daemon may be unhealthy"
+        fi
+    else
+        log_pass "xcena_cli detects $cli_n device(s) — no workaround needed"
+    fi
+fi
+
+# ============================================================
 # Register docker alias
 # ============================================================
 BASHRC_FILE="$HOME/.bashrc"
