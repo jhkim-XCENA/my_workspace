@@ -108,7 +108,7 @@ log_section "Prerequisites"
 
 # apt update: 필요한 패키지 중 하나라도 없으면 실행
 _need_apt=0
-for _cmd in curl git wget unzip gcc make rg fdfind clangd; do
+for _cmd in curl git wget unzip gcc make rg fdfind clangd sshpass; do
     command -v "$_cmd" &>/dev/null || { _need_apt=1; break; }
 done
 if [ "$_need_apt" = "1" ]; then
@@ -130,6 +130,7 @@ ensure_pkg make
 ensure_pkg ripgrep rg
 ensure_pkg fd-find fdfind
 ensure_pkg clangd
+ensure_pkg sshpass
 
 # node / gh
 ensure_cmd node 22 install_node
@@ -164,8 +165,11 @@ if command -v claude &>/dev/null; then
 else
     log_install "claude-code (native installer)"
     _t=$SECONDS
-    curl -fsSL https://cli.claude.com/install.sh | sh >> "$SETUP_LOG" 2>&1 \
-        || { log_fail "claude-code 설치 실패 (setup.log 참조)"; return 1; }
+    if ! curl -fsSL https://cli.claude.com/install.sh | sh >> "$SETUP_LOG" 2>&1; then
+        log_warn "primary installer 실패 — fallback 시도 (claude.ai/install.sh)"
+        curl -fsSL https://claude.ai/install.sh | bash >> "$SETUP_LOG" 2>&1 \
+            || { log_fail "claude-code 설치 실패 (setup.log 참조)"; return 1; }
+    fi
     export PATH="$HOME/.local/bin:$PATH"
     hash -r
     log_done "claude-code ($(_elapsed $_t))"
@@ -176,15 +180,22 @@ fi
 # ============================================================
 log_section "Auth & Tokens"
 
-TOKEN="$(cat "$SCRIPT_DIR/github_token.txt" 2>/dev/null | tr -d '[:space:]')"
-if [ -z "$TOKEN" ]; then
-    log_fail "github_token.txt is empty. Please fill in your GitHub token."
+if [ ! -f "$SCRIPT_DIR/config.sh" ]; then
+    log_fail "config.sh is not found at $SCRIPT_DIR/config.sh"
     return 1
 fi
+source "$SCRIPT_DIR/config.sh"
+
+if [ -z "$GH_TOKEN" ]; then
+    log_fail "GH_TOKEN is empty in config.sh. Please fill it in."
+    return 1
+fi
+TOKEN="$GH_TOKEN"
 export GITHUB_TOKEN="$TOKEN"
+export GH_TOKEN="$TOKEN"
 log_pass "GITHUB_TOKEN set"
 
-CLAUDE_TOKEN="$(cat "$SCRIPT_DIR/claude_token.txt" 2>/dev/null | tr -d '[:space:]')"
+CLAUDE_TOKEN="$CLAUDE_CODE_OAUTH_TOKEN"
 if [ -n "$CLAUDE_TOKEN" ]; then
     export CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_TOKEN"
     log_pass "CLAUDE_CODE_OAUTH_TOKEN set (${CLAUDE_CODE_OAUTH_TOKEN:0:12}...)"
@@ -199,8 +210,12 @@ if [ -n "$CLAUDE_TOKEN" ]; then
         fi
     fi
 else
-    log_warn "claude_token.txt not found or empty"
+    log_warn "CLAUDE_CODE_OAUTH_TOKEN is empty in config.sh"
 fi
+
+if [ -n "$REMOTE_IP" ];       then log_pass "REMOTE_IP set ($REMOTE_IP)"; else log_warn "REMOTE_IP is empty in config.sh"; fi
+if [ -n "$REMOTE_USER" ];     then log_pass "REMOTE_USER set ($REMOTE_USER)"; else log_warn "REMOTE_USER is empty in config.sh"; fi
+if [ -n "$REMOTE_PASSWORD" ]; then log_pass "REMOTE_PASSWORD set"; else log_warn "REMOTE_PASSWORD is empty in config.sh"; fi
 
 # ============================================================
 # [Step 4] Git Config
@@ -320,8 +335,20 @@ echo "export GITHUB_TOKEN=\"$TOKEN\"" >> "$BASHRC_FILE"
 if [ -n "$CLAUDE_TOKEN" ]; then
     echo "export CLAUDE_CODE_OAUTH_TOKEN=\"$CLAUDE_TOKEN\"" >> "$BASHRC_FILE"
 fi
+if [ -n "$REMOTE_IP" ]; then
+    echo "export REMOTE_IP=\"$REMOTE_IP\"" >> "$BASHRC_FILE"
+fi
+if [ -n "$REMOTE_USER" ]; then
+    echo "export REMOTE_USER=\"$REMOTE_USER\"" >> "$BASHRC_FILE"
+fi
+if [ -n "$REMOTE_PASSWORD" ]; then
+    echo "export REMOTE_PASSWORD=\"$REMOTE_PASSWORD\"" >> "$BASHRC_FILE"
+fi
 echo "bind 'set enable-bracketed-paste off' 2>/dev/null" >> "$BASHRC_FILE"
 echo "alias claude='claude --dangerously-skip-permissions'" >> "$BASHRC_FILE"
+echo "alias remote_status='curl -X POST http://192.168.57.60:8002/api/power/\${REMOTE_IP}/status'" >> "$BASHRC_FILE"
+echo "alias remote_on='curl -X POST http://192.168.57.60:8002/api/power/\${REMOTE_IP}/on'" >> "$BASHRC_FILE"
+echo "alias remote_off='curl -X POST http://192.168.57.60:8002/api/power/\${REMOTE_IP}/off'" >> "$BASHRC_FILE"
 echo "reset" >> "$BASHRC_FILE"
 echo "tput reset" >> "$BASHRC_FILE"
 echo "stty sane" >> "$BASHRC_FILE"

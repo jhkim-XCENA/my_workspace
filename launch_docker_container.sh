@@ -55,8 +55,7 @@ log_info "[1] 호스트 파일 및 디렉토리"
 
 REQUIRED_DIRS=("$HOME/.ssh")
 REQUIRED_FILES=(
-    "$SCRIPT_PATH/github_token.txt"
-    "$SCRIPT_PATH/claude_token.txt"
+    "$SCRIPT_PATH/config.sh"
 )
 
 for dir in "${REQUIRED_DIRS[@]}"; do
@@ -66,19 +65,29 @@ for file in "${REQUIRED_FILES[@]}"; do
     if [ -e "$file" ]; then log_pass "$file"; else log_fail "$file 파일 없음"; fi
 done
 
-TOKEN="$(cat "$SCRIPT_PATH/github_token.txt" 2>/dev/null | tr -d '[:space:]')"
-if [ -n "$TOKEN" ]; then
-    log_pass "github_token.txt 내용 있음"
-else
-    log_fail "github_token.txt 파일이 없거나 비어있음"
+TOKEN=""
+CLAUDE_TOKEN=""
+if [ -f "$SCRIPT_PATH/config.sh" ]; then
+    source "$SCRIPT_PATH/config.sh"
+    TOKEN="$GH_TOKEN"
+    CLAUDE_TOKEN="$CLAUDE_CODE_OAUTH_TOKEN"
 fi
 
-CLAUDE_TOKEN="$(cat "$SCRIPT_PATH/claude_token.txt" 2>/dev/null | tr -d '[:space:]')"
-if [ -n "$CLAUDE_TOKEN" ]; then
-    log_pass "claude_token.txt 내용 있음"
+if [ -n "$TOKEN" ]; then
+    log_pass "config.sh: GH_TOKEN 내용 있음"
 else
-    log_fail "claude_token.txt 파일이 없거나 비어있음"
+    log_fail "config.sh: GH_TOKEN 이 비어있음"
 fi
+
+if [ -n "$CLAUDE_TOKEN" ]; then
+    log_pass "config.sh: CLAUDE_CODE_OAUTH_TOKEN 내용 있음"
+else
+    log_fail "config.sh: CLAUDE_CODE_OAUTH_TOKEN 이 비어있음"
+fi
+
+if [ -n "$REMOTE_IP" ];       then log_pass "config.sh: REMOTE_IP 내용 있음 ($REMOTE_IP)"; else log_warn "config.sh: REMOTE_IP 이 비어있음"; fi
+if [ -n "$REMOTE_USER" ];     then log_pass "config.sh: REMOTE_USER 내용 있음 ($REMOTE_USER)"; else log_warn "config.sh: REMOTE_USER 이 비어있음"; fi
+if [ -n "$REMOTE_PASSWORD" ]; then log_pass "config.sh: REMOTE_PASSWORD 내용 있음"; else log_warn "config.sh: REMOTE_PASSWORD 이 비어있음"; fi
 
 # --- 2. Docker ---
 log_info "[2] Docker"
