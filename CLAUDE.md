@@ -45,16 +45,32 @@ source ./execute_with_source.sh
 
 ## Remote XCENA 머신 관리
 
-원격 device-호스트에서 컨테이너를 관리하는 헬퍼들 (`config.sh` 활성화 전제):
+원격 device-호스트에서 컨테이너를 관리하는 헬퍼들 (`config.sh` 활성화 전제). 자세한 설명은 [`remote/README.md`](remote/README.md) 참조.
 
+**일상**
 ```bash
-bash remote/setup.sh         # 새 host에 처음 셋업 (clone → scp → docker launch)
-bash remote/check.sh         # 헬스체크 (host vs container device 비교 + sort 빌드)
-bash remote/ssh_docker.sh '<cmd>'  # 컨테이너 안에서 명령 실행
-bash remote/reset.sh         # BMC 전원 cycle + 자동 복구
+bash remote/check.sh                 # 헬스체크 (host vs container device 비교 + sort 빌드)
+bash remote/ssh_docker.sh '<cmd>'    # 컨테이너 안에서 명령 실행
+bash remote/sync.sh                  # 로컬 → 원격 incremental rsync (dev 사이클 단축)
 ```
 
-Claude skills 도 등록되어 있어 자연어로도 호출 가능 (`remote-setup`, `remote-check`, `remote-ssh-docker`, `remote-reset`).
+**진단**
+```bash
+bash remote/host_diag.sh             # host stack 스냅샷 (lsmod / device files / cxl / pxl)
+bash remote/dmesg.sh [pattern]       # 원격 sudo dmesg + grep
+bash remote/diag.sh                  # SDK 공식 troubleshooting.sh 다운/실행 + 보고서 회수
+bash remote/log.sh                   # setup.log + journal + dmesg 한 디렉토리에 회수
+```
+
+**복구 / 변경**
+```bash
+bash remote/setup.sh                 # 처음 프로비저닝 (10–25분)
+bash remote/reset.sh                 # BMC 전원 cycle + 자동 복구 (15–40분)
+bash remote/apply_legacy_cli.sh      # 기존 컨테이너에 legacy xcena_cli 핫패치
+bash remote/upgrade_host.sh          # host의 libpxl + driver 업그레이드 (30–60분, destructive)
+```
+
+Claude skills 도 등록되어 있어 자연어로도 호출 가능 (`remote-setup`, `remote-check`, `remote-ssh-docker`, `remote-reset`, `sdk-release-info`).
 
 ## Docs
 

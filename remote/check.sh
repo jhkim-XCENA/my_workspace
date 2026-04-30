@@ -70,18 +70,20 @@ fi
 
 # ── 4. Informational deeper device health (device 0) ──
 log_info "[4] Deeper device health (device 0, informational)"
+
+# MSUB Bitmap (single line summary)
 info_out="$(rdocker_exec "xcena_cli device-info 0" 2>&1 || true)"
-msub="$(echo "$info_out" | grep -i 'MSUB Bitmap' | head -1 || true)"
+msub="$(echo "$info_out" | grep -i 'MSUB Bitmap' | head -1 | xargs || true)"
 if [ -n "$msub" ]; then
-    log_info "  $(echo "$msub" | xargs)"
-    if echo "$msub" | grep -qE '0x0\b|0x0$'; then
-        log_warn "  MSUB Bitmap is 0x0 — device offloading unavailable"
+    if echo "$msub" | grep -qE '0x0+(_0+)*\s*$|0x0$'; then
+        log_warn "  $msub  (offloading unavailable)"
+    else
+        log_info "  $msub"
     fi
 fi
+
+# IRQ flags: count non-zero, show count + first 3 if any
 err_out="$(rdocker_exec "xcena_cli debug-error 0" 2>&1 || true)"
-# Filter: keep IRQ-bearing lines whose hex value contains a non-zero digit.
-# Hex values may be formatted with underscores (e.g. 0x0000_0000_0000_0000) so
-# strip the prefix/underscores before testing for non-zero.
 bad="$(echo "$err_out" | awk '
     /IRQ/ && match($0, /0x[0-9a-fA-F_]+/) {
         v = substr($0, RSTART, RLENGTH)
@@ -90,13 +92,16 @@ bad="$(echo "$err_out" | awk '
     }
 ' || true)"
 if [ -n "$bad" ]; then
-    log_warn "  Non-zero IRQ flags:"
-    echo "$bad" | sed 's/^/    /'
+    bad_count="$(echo "$bad" | wc -l)"
+    log_warn "  Non-zero IRQ flags: $bad_count line(s) — first 3:"
+    echo "$bad" | head -3 | sed 's/^/      /'
 fi
+
+# Firmware: just the revision line(s)
 fw_out="$(rdocker_exec "xcena_cli fw-info 0" 2>&1 || true)"
-fw_lines="$(echo "$fw_out" | grep -E 'Active Slot|Firmware Revision' | head -5 || true)"
+fw_lines="$(echo "$fw_out" | grep -E 'Active Slot|Firmware Revision' | head -3 | xargs -I{} echo '  {}' || true)"
 if [ -n "$fw_lines" ]; then
-    echo "$fw_lines" | sed 's/^/    /'
+    echo "$fw_lines"
 fi
 
 # ── 5. sort scp + build + run ──

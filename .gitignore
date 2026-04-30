@@ -6,3 +6,24 @@ shared/
 github_token.txt
 claude_token.txt
 claude_credentials.json
+
+# logs / temp artifacts
+setup.log
+
+# .bashrc 백업 누적 (execute_with_source.sh 가 매번 .bak_<TS> 생성)
+.bashrc.bak_*
+
+# legacy token backups
+*.txt.bak
+
+# auxiliary external repos that may live alongside but aren't part of this workspace
+xvector-dev/
+
+# personal/cached data not meant to be tracked
+confluence_docs/
+cost_model/
+eac_chapters/
+wilson_chapters/
+uarch/
+mu_llvm-*/
+*.pdf

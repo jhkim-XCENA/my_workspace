@@ -115,6 +115,26 @@ if [ "$USE_KVM" = true ]; then
     if [ -e /dev/kvm ]; then log_pass "/dev/kvm 존재"; else log_fail "/dev/kvm 없음"; fi
 fi
 
+# --- silicon 모드: host stack 사전 점검 (D1, D2) ---
+# 컨테이너 만들기 전에 호스트의 pxl_resourced + CXL region 상태를 확인해서
+# "컨테이너만 만들어 놓고 device 안 보이는" 사고를 미연에 방지한다.
+if [ "$USE_KVM" = false ]; then
+    if systemctl is-active pxl_resourced &>/dev/null; then
+        _pxl_ver="$(pxl_resourced --version 2>/dev/null | head -3 | tail -1 | xargs || echo unknown)"
+        log_pass "pxl_resourced 활성 ($_pxl_ver)"
+    else
+        log_warn "pxl_resourced 비활성 — silicon 모드에서 device 접근 실패 가능"
+    fi
+    if command -v cxl &>/dev/null; then
+        _region_count=$(cxl list -R 2>/dev/null | grep -c '"region"' || echo 0)
+        if [ "${_region_count:-0}" -ge 1 ]; then
+            log_pass "CXL regions: ${_region_count}개"
+        else
+            log_warn "CXL region 없음 — host reboot 후 재시도 권장 (PCI rebind 후 흔히 발생)"
+        fi
+    fi
+fi
+
 # --- Preflight result ---
 if [ "$ERRORS" -ne 0 ]; then
     log_fail "${ERRORS}개 항목 미충족. 위 내용을 확인하세요."
