@@ -21,11 +21,16 @@ source ./execute_with_source.sh
 ```
 ~/
 ├── execute_with_source.sh   # 전체 환경 설정 (source로 실행)
-├── github_token.txt         # GitHub token (git-ignored)
-├── claude_token.txt         # Claude OAuth token (git-ignored)
+├── launch_docker_container.sh  # Docker 컨테이너 셋업
+├── config.sh                # 토큰 + 원격 정보 (skip-worktree, 빈 템플릿이 tracked)
 ├── .clangd                  # C++ LSP 설정 (mu_library 경로 포함)
 ├── .gitignore               # nvim/, sdk_release/, llvm-project/, shared/ 제외
 ├── nvim/                    # Neovim 설정 (init.lua, plugins, LSP)
+├── remote/                  # 원격 머신 관리 스크립트 (lib.sh / setup.sh / check.sh / ssh_docker.sh / reset.sh)
+├── docs/remote/             # 원격 디버깅/운영 문서
+├── binaries/                # 워크어라운드용 사전빌드 바이너리 (예: xcena_cli.legacy)
+├── sort/                    # SDK 예제 (CXL device 검증용)
+├── .agents/skills/          # Claude skill 정의 (remote-setup/check/ssh-docker/reset 등)
 ├── cost_model/              # 비용 모델 관련 문서/자료
 └── .devcontainer/           # Dev container 설정
 ```
@@ -33,16 +38,34 @@ source ./execute_with_source.sh
 ## Environment Details
 
 - `execute_with_source.sh`는 반드시 `source`로 실행 (subshell 불가)
-- GitHub token: `github_token.txt`에서 읽어 `GITHUB_TOKEN`, `GH_TOKEN` 환경변수로 설정
-- Claude token: `claude_token.txt`에서 읽어 `CLAUDE_CODE_OAUTH_TOKEN` 환경변수로 설정
+- 토큰 + 원격 정보 (`GH_TOKEN`, `CLAUDE_CODE_OAUTH_TOKEN`, `REMOTE_IP/USER/PASSWORD`) 는 `config.sh` 한 곳에서 관리. `config.sh` 자체는 빈 템플릿이 git에 tracked, 실제 값은 `git update-index --skip-worktree config.sh` 로 로컬 변경 무시.
 - 컨테이너 환경은 PS1 색상으로 구분 (Docker: 보라색, 호스트: 파란색)
 - Claude alias: `claude --dangerously-skip-permissions`
+- Remote alias (`config.sh` 활성화 후 `.bashrc`에 자동 등록): `remote_status / remote_on / remote_off`
+
+## Remote XCENA 머신 관리
+
+원격 device-호스트에서 컨테이너를 관리하는 헬퍼들 (`config.sh` 활성화 전제):
+
+```bash
+bash remote/setup.sh         # 새 host에 처음 셋업 (clone → scp → docker launch)
+bash remote/check.sh         # 헬스체크 (host vs container device 비교 + sort 빌드)
+bash remote/ssh_docker.sh '<cmd>'  # 컨테이너 안에서 명령 실행
+bash remote/reset.sh         # BMC 전원 cycle + 자동 복구
+```
+
+Claude skills 도 등록되어 있어 자연어로도 호출 가능 (`remote-setup`, `remote-check`, `remote-ssh-docker`, `remote-reset`).
+
+## Docs
+
+- [`docs/remote/system_debugging.md`](docs/remote/system_debugging.md) — host/container 디바이스 인식 안 될 때 진단 + 호스트 stack 업그레이드 절차 + 알려진 함정. 원격 device 디버깅 시 가장 먼저 참고.
 
 ## Related Projects
 
 이 워크스페이스에서 주로 작업하는 프로젝트:
 
 - **PXCC** (`/sdk_release/tools/pxcc/`) — Heterogeneous C/C++ 컴파일러. 자체 CLAUDE.md 참조.
+- **sdk_release** (`/sdk_release/`) — XCENA SDK. `git pull --ff-only && git submodule update --init --recursive` 하면 최신 libpxl/driver/cli 소스 + 공식 docs(install, troubleshooting) 확보 가능.
 
 ## Conventions
 
