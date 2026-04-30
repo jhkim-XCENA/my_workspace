@@ -268,13 +268,14 @@ else
 fi
 
 # Silicon mode: containers must mount /tmp/pxl so xcena_cli can talk to the
-# host pxl_resourced daemon (XCENA Resource Management Daemon). Without it,
-# `xcena_cli num-device` reports "No CXL devices found" even with --privileged
-# because the device discovery flows through service_pipe FIFOs in /tmp/pxl,
-# not through /dev/mx_dma directly.
+# host pxl_resourced daemon (XCENA Resource Management Daemon). Per the
+# multi-container guide (sdk_release/docs/install/docker/multiple-containers.md),
+# containers also need --pid=host and --userns=host so xcena_cli can resolve
+# the daemon's PID-scoped resources. Without these, `xcena_cli num-device`
+# reports "No CXL devices found" even with --privileged + /tmp/pxl mounted.
 DOCKER_PXL_OPTS=()
 if [ "$USE_KVM" = false ] && [ -d /tmp/pxl ]; then
-    DOCKER_PXL_OPTS+=(-v /tmp/pxl:/tmp/pxl)
+    DOCKER_PXL_OPTS+=(--pid=host --userns=host -v /tmp/pxl:/tmp/pxl)
 fi
 
 # db-devenv 추가 볼륨/옵션
